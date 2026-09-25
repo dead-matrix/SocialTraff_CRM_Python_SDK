@@ -1,8 +1,8 @@
 # Контракт SDK ↔ CRM
 
 Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.1.0.
-Контрактные фикстуры (`tests/fixtures/contract/`) сверены с CRM на коммите `5e4e833`; проверка:
-`tests/test_contract_fixtures.py`.
+Контрактные фикстуры (`tests/fixtures/contract/`) сверены с CRM на коммите `378c611` (формы
+не менялись с `5e4e833`); проверка: `tests/test_contract_fixtures.py`.
 
 ## Service plane (`ServiceClient`, `X-Service-Token`)
 

@@ -32,7 +32,7 @@ socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Py
 from socialtraff_crm import ServiceClient
 
 async with ServiceClient(
-    "http://crm.socialtraff.com", service_token, timeout=10.0, retries=3
+    "https://crm.socialtraff.com", service_token, timeout=10.0, retries=3
 ) as crm:
     buyer = await crm.identity.put_buyer(42, tg_id=100500, display_name="Ann")
     await crm.identity.put_account(1042, title="Ann", owner_buyer_id=42, is_personal=True)
@@ -62,7 +62,7 @@ from socialtraff_crm import AssertionSigner, CustomerClient
 signer = AssertionSigner(private_key_pem, kid="bosslink-2026-09")
 
 async with CustomerClient(
-    "http://crm.socialtraff.com",
+    "https://crm.socialtraff.com",
     signer,
     account_public_id="3f2b8c1e-8f4a-4d0b-9a57-0c7e6f1d2a90",  # public_customer_id аккаунта
     actor_buyer_id=42,  # buyer_id действующего человека, claim act
@@ -109,12 +109,13 @@ async def crm_webhook(request: Request) -> dict:
     except SignatureError:
         raise HTTPException(401)
     except ValidationError:
-        raise HTTPException(422)
+        # 400: CRM помечает событие failed без повторов; на 422 и прочие 4xx она повторяет бесконечно
+        raise HTTPException(400)
 
     # дедупликация по event.event_id на стороне продукта
     match event:
         case PlanChangedEvent():
-            ...  # применить, только если event.payload.version новее текущего
+            ...  # применить, только если event.payload.version >= сохранённой
         case NotifyEvent():
             ...
         case GenericEvent():
@@ -125,8 +126,9 @@ async def crm_webhook(request: Request) -> dict:
 События:
 
 - `product.plan_changed` (`PlanChangedEvent`): `account_id`, `product` (`cabinet` или `privetka`),
-  `plan`, `plan_until` (ISO с поясом или `null`), `version`. `version` монотонна по аккаунту и
-  продукту: событие со старой версией нужно отбросить.
+  `plan`, `plan_until` (ISO с поясом или `null`), `version`. `version` не убывает по аккаунту и
+  продукту: применять событие, если `version` >= сохранённой (истечение доступа приходит с той же
+  `version`, что и последняя оплата), событие с меньшей версией отбросить.
 - `product.notify` (`NotifyEvent`): `account_id`, `kind`, `params`, `button` (`{url, text?}` или
   `null`). Известные `kind` перечислены в `socialtraff_crm.models.KNOWN_NOTIFY_KINDS`:
   `payment_confirmed`, `expiring_7d`, `expiring_3d`, `expiring_1d` и резервные
