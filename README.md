@@ -9,7 +9,7 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.1.0`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> Статус: `0.1.1`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
 > формы ответов и событий сверены с CRM контрактными фикстурами (`tests/fixtures/contract/`).
 
 ## Установка
@@ -21,10 +21,10 @@
 dependencies = ["socialtraff-crm-sdk"]
 
 [tool.uv.sources]
-socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.0" }
+socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.1" }
 ```
 
-Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.0"`.
+Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.1"`.
 
 ## ServiceClient
 
