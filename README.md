@@ -9,22 +9,27 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.1.1`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
-> формы ответов и событий сверены с CRM контрактными фикстурами (`tests/fixtures/contract/`).
+> Статус: `0.1.2`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> формы ответов и событий сверены с контрактными фикстурами CRM (`tests/fixtures/contract/`,
+> коммит CRM в `tests/fixtures/contract/CRM_VERSION`). Изменения по версиям: [CHANGELOG.md](CHANGELOG.md).
 
 ## Установка
 
-Пакет распространяется git-тегами. В `pyproject.toml` продукта:
+Пакет распространяется git-тегами из приватного репозитория GitHub: для установки нужен доступ
+на чтение (deploy key или fine-grained токен только на чтение этого репозитория). В
+`pyproject.toml` продукта:
 
 ```toml
 [project]
 dependencies = ["socialtraff-crm-sdk"]
 
 [tool.uv.sources]
-socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.1" }
+socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.2" }
 ```
 
-Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.1"`.
+Для доступа по SSH (deploy key) источник записывается как
+`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.1.2" }`.
+Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.2"`.
 
 ## ServiceClient
 
@@ -48,8 +53,9 @@ async with ServiceClient(
 
 Заголовок авторизации `X-Service-Token`, префикс `/api/internal`. `retries` задаёт общее число
 попыток, включая первую. Все записи идемпотентны на стороне CRM: повтор с тем же телом отвечает
-200 и ничего не меняет. У `identity.import_` и `plans.import_` есть `idempotency_key`: с ним
-POST повторяется при сетевых сбоях. Даты без часового пояса SDK отвергает (`ValidationError`),
+200 и ничего не меняет. У `identity.import_` и `plans.import_` есть `idempotency_key`: CRM этот
+заголовок у импортов не проверяет (импорт идемпотентен по содержимому), SDK по нему только
+разрешает себе повторить POST при сетевых сбоях, поэтому любой ключ, например `uuid4()`, безопасен. Даты без часового пояса SDK отвергает (`ValidationError`),
 потому что CRM прочла бы их как московское время. В `put_buyer` непереданное поле сохраняется,
 а явный `None` стирает значение. Полный список методов: [docs/CONTRACT.md](docs/CONTRACT.md).
 
@@ -133,13 +139,18 @@ async def crm_webhook(request: Request) -> dict:
   `null`). Известные `kind` перечислены в `socialtraff_crm.models.KNOWN_NOTIFY_KINDS`:
   `payment_confirmed`, `expiring_7d`, `expiring_3d`, `expiring_1d` и резервные
   `<тип события мессенджера>_fallback` (например `payment_reminder_fallback`), которые CRM шлёт,
-  когда у владельца аккаунта нет чата в мессенджере. Поле `kind` остаётся строкой: новый `kind`
-  из CRM не ломает разбор, его нужно просто пропустить.
+  когда у владельца аккаунта нет чата в мессенджере. Поле `kind` остаётся строкой, `params`
+  словарём: новый `kind` из CRM не ломает разбор, его нужно просто пропустить.
+  `event.payload.typed_params()` отдаёт модель известного `kind` (`PaymentConfirmedParams`,
+  `ExpiringParams`, `AccessExpiredFollowupParams`, `PaymentReminderParams`,
+  `PaymentExpiredParams`) или `None` для неизвестного. Суммы `amount_minor` в копейках,
+  `expires_date` дата (`date`), `modules` список `NotifyModule(key, title)`: локализовать по
+  `key` (`cabinet.pro`), `title` приходит по-русски.
 - Любой другой тип разбирается как `GenericEvent`.
 
 `subscription_changed` в вебхук продукта не приходит: CRM отправляет его только мессенджеру.
-Модель `SubscriptionChangedPayload` (`account_id`, `user_id`, `has_active_subscription`, `frozen`,
-`reason` из `plan_changed`/`expired`) есть в SDK для потребителей этой очереди.
+Модель `SubscriptionChangedPayload` (`account_id`, `user_id`, `bot_id`, `has_active_subscription`,
+`frozen`, `reason` из `plan_changed`/`expired`) есть в SDK для потребителей этой очереди.
 
 ## Ошибки
 
@@ -166,6 +177,21 @@ uv venv --python 3.12
 uv pip install -e ".[dev]"
 uv run pytest -v
 uv run ruff check
+uv run ruff format --check
 ```
+
+Контрактные фикстуры (`tests/fixtures/contract/*.json`) - байтовая копия CRM
+`tests/contract/*.json`, коммит CRM записан в `tests/fixtures/contract/CRM_VERSION`. Каждая
+фикстура обязана быть разобрана моделями SDK (`tests/test_contract_fixtures.py`): новая фикстура
+CRM без разбора в SDK валит тесты. Пересинхронизация из рабочей копии CRM и проверка для CI:
+
+```sh
+python scripts/sync_contract_fixtures.py --crm ../CRM          # скопировать и записать коммит
+python scripts/sync_contract_fixtures.py --crm ../CRM --check  # CI: код 1 при расхождении
+CRM_CHECKOUT=../CRM uv run pytest tests/test_contract_fixtures.py  # то же тестом
+```
+
+Порядок при изменении контракта CRM: CRM коммитит фикстуры, SDK синхронизирует их, правит
+модели, выпускает тег, и только потом CRM выкатывается (правило в CRM `tests/contract/README.md`).
 
 Соответствие методов SDK и ручек CRM: [docs/CONTRACT.md](docs/CONTRACT.md).
