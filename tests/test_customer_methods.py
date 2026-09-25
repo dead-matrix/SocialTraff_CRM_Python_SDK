@@ -120,8 +120,9 @@ ROUTES: list[tuple[str, Call, str, str, str, Any]] = [
         "billing:write",
         {
             "payment_public_id": "p",
-            "checkout_url": "https://pay/p/",
-            "status": "draft",
+            "checkout_url": None,
+            "status": "invoiced",
+            "pay_url": "https://pay.example/p",
             "amount_rub_kopecks": 1,
             "return_to": "https://w/x",
         },
@@ -268,6 +269,28 @@ async def test_create_payment_body_and_explicit_key(ed25519_keys: tuple[bytes, b
         "ai_function": "text",
     }
     assert result.ai_tokens == 100000 and result.checkout_url == "https://pay/p1/"
+
+
+async def test_create_payment_parses_crm_201_shape(ed25519_keys: tuple[bytes, bytes]) -> None:
+    # Exact body of CRM customer_billing.create_payment: invoice issued, storefront unset.
+    data = {
+        "payment_public_id": "0192f3a4-5b6e-7b22-9d33-445566778801",
+        "checkout_url": None,
+        "status": "invoiced",
+        "amount_rub_kopecks": 78300,
+        "return_to": "https://lk.socialtraff.com/billing",
+        "pay_url": "https://pay.platega.io/0192f3a4",
+    }
+    recorder = Recorder(ok(data, 201))
+    async with client_for(ed25519_keys[0], recorder) as client:
+        result = await client.billing.create_payment(
+            3, quantity=3, provider="platega", payment_method="sbp", return_to=data["return_to"]
+        )
+    assert result.status == "invoiced"
+    assert result.pay_url == "https://pay.platega.io/0192f3a4"
+    assert result.checkout_url is None
+    assert result.payment_public_id == data["payment_public_id"]
+    assert result.ai_tokens is None
 
 
 async def test_list_payments_query_and_models(ed25519_keys: tuple[bytes, bytes]) -> None:

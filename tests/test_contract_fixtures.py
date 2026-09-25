@@ -73,6 +73,8 @@ def test_notify_fallback_fixture_verifies() -> None:
     assert event.payload.button is not None
     assert event.payload.button.text is None
     assert event.payload.button.url.startswith("https://t.me/")
+    # CRM passes the sales event payload as params (outbox/channel.route_sales_event).
+    assert set(event.payload.params) == {"amount_minor", "service", "pay_page_url", "invoice_uuid"}
 
 
 @pytest.mark.parametrize(

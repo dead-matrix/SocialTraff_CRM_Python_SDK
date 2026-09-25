@@ -8,8 +8,10 @@
     },
     "kind": "payment_reminder_fallback",
     "params": {
-      "expires_date": "2026-10-25",
-      "modules": ["cabinet"]
+      "amount_minor": 78300,
+      "invoice_uuid": "0192f3a4-5b6e-7b22-9d33-445566778801",
+      "pay_page_url": "https://pay.platega.io/0192f3a4",
+      "service": "Pro"
     }
   }
 }

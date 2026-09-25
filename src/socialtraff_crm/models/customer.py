@@ -65,11 +65,16 @@ class Subscription(CrmModel):
 
 
 class CheckoutSession(CrmModel):
-    """Draft payment; ``checkout_url`` is the CRM storefront, not the provider page."""
+    """Payment with its provider invoice already issued (CRM answers ``status="invoiced"``).
+
+    Send the buyer to ``pay_url`` (the provider page). ``checkout_url`` is the optional CRM
+    storefront and is ``None`` when the storefront is not configured.
+    """
 
     payment_public_id: str
-    checkout_url: str
     status: str
+    pay_url: str | None = None
+    checkout_url: str | None = None
     amount_rub_kopecks: int
     return_to: str
     ai_tokens: int | None = None
