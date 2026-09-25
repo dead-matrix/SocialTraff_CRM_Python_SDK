@@ -1,5 +1,21 @@
 # Изменения
 
+## 0.1.3 (2026-09-25)
+
+Синхронизация с контрактом CRM на коммите `55b72c1`.
+
+- `ServiceClient.catalog.get()` -> `list[CatalogProduct]`: витрина без аккаунта,
+  `GET /api/internal/catalog` под `X-Service-Token`. Состав и форма те же, что у
+  `CustomerClient.billing.products()`; нужна страницам без входа (анонимная страница цен).
+  CRM отдаёт `Cache-Control: private, max-age=60`, продукту достаточно кэша в процессе.
+- Фикстура `service_catalog.json` (32 файла в копии); тест сверяет её данные с
+  `customer_billing_products.json`.
+- `webhook_product_request.json`: URL запроса теперь настоящий путь приёмника BossLink
+  `/api/v1/crm/webhook` (подпись та же, она от тела).
+- README: как брать фикстуры в тесты продукта (в wheel их нет).
+
+Обратная совместимость: только добавления.
+
 ## 0.1.2 (2026-09-25)
 
 Синхронизация с контрактом CRM на коммите `02878fa`.

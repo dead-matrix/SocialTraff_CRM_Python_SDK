@@ -9,7 +9,7 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.1.2`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> Статус: `0.1.3`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
 > формы ответов и событий сверены с контрактными фикстурами CRM (`tests/fixtures/contract/`,
 > коммит CRM в `tests/fixtures/contract/CRM_VERSION`). Изменения по версиям: [CHANGELOG.md](CHANGELOG.md).
 
@@ -24,12 +24,12 @@
 dependencies = ["socialtraff-crm-sdk"]
 
 [tool.uv.sources]
-socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.2" }
+socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.3" }
 ```
 
 Для доступа по SSH (deploy key) источник записывается как
-`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.1.2" }`.
-Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.2"`.
+`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.1.3" }`.
+Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.3"`.
 
 ## ServiceClient
 
@@ -43,6 +43,8 @@ async with ServiceClient(
     await crm.identity.put_account(1042, title="Ann", owner_buyer_id=42, is_personal=True)
     await crm.identity.put_member(1042, 42, "owner")
     customer_id = await crm.identity.issue_customer_id(1042)
+
+    products = await crm.catalog.get()  # витрина без аккаунта (анонимная страница цен)
 
     plans = await crm.plans.get(1042)
     page = await crm.plans.list_updated(since, limit=100)  # since с часовым поясом
@@ -189,6 +191,14 @@ CRM без разбора в SDK валит тесты. Пересинхрони
 python scripts/sync_contract_fixtures.py --crm ../CRM          # скопировать и записать коммит
 python scripts/sync_contract_fixtures.py --crm ../CRM --check  # CI: код 1 при расхождении
 CRM_CHECKOUT=../CRM uv run pytest tests/test_contract_fixtures.py  # то же тестом
+```
+
+Фикстуры лежат только в репозитории SDK (`tests/fixtures/contract/`) и в wheel не попадают. Для
+тестов продукта их копируют к себе (например, в `tests/fixtures/crm/`) из тега той версии SDK,
+что стоит в зависимостях, и держат рядом файл с тегом; обновляют вместе с тегом SDK:
+
+```sh
+git -C <SDK> archive v0.1.3 tests/fixtures/contract | tar -x --strip-components=3 -C tests/fixtures/crm
 ```
 
 Порядок при изменении контракта CRM: CRM коммитит фикстуры, SDK синхронизирует их, правит

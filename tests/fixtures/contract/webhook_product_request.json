@@ -5,5 +5,5 @@
     "X-CRM-Signature": "729d96ce699763aabdddc52c052599e32858d666353a66f71fa77b64f9969c9e"
   },
   "method": "POST",
-  "url": "https://bosslink.test/crm/webhook"
+  "url": "https://bosslink.test/api/v1/crm/webhook"
 }

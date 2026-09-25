@@ -1,4 +1,4 @@
-"""Service plane namespaces: ``identity``, ``plans`` and ``ai``.
+"""Service plane namespaces: ``identity``, ``plans``, ``catalog`` and ``ai``.
 
 Every write here is idempotent on the CRM side (a repeat with the same body answers 200 and
 changes nothing), so PUT/DELETE are retried freely and imports become retryable with an
@@ -13,8 +13,9 @@ from datetime import datetime
 from typing import Any, Final, Protocol
 from urllib.parse import quote
 
-from ._customer_api import _page_params, _parse
+from ._customer_api import _page_params, _parse, _ProductList
 from .errors import ValidationError
+from .models.customer import CatalogProduct
 from .models.service import (
     Account,
     AccountPlans,
@@ -28,7 +29,7 @@ from .models.service import (
     PlansPage,
 )
 
-__all__ = ["UNSET", "IdentityApi", "PlansApi", "ServiceAiApi"]
+__all__ = ["UNSET", "CatalogApi", "IdentityApi", "PlansApi", "ServiceAiApi"]
 
 
 class _Unset(enum.Enum):
@@ -200,6 +201,19 @@ class PlansApi(_Namespace):
             ),
         )
         return _parse(PlansPage, data, "plans.list_updated")
+
+
+class CatalogApi(_Namespace):
+    async def get(self) -> list[CatalogProduct]:
+        """Storefront catalogue without an account (``GET /api/internal/catalog``).
+
+        Same items and shape as ``CustomerClient.billing.products()``, for pages that have no
+        signed-in account (an anonymous pricing page). Read-only: purchases still go through
+        the customer plane. CRM marks the answer cacheable for 60 seconds
+        (``Cache-Control: private, max-age=60``); keep a short in-process cache.
+        """
+        data = await self._request("GET", "/catalog")
+        return _parse(_ProductList, data, "catalog.get").items
 
 
 class ServiceAiApi(_Namespace):

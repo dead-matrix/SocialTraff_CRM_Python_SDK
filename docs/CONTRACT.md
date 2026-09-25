@@ -1,8 +1,8 @@
 # Контракт SDK ↔ CRM
 
-Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.1.2.
-Контрактные фикстуры (`tests/fixtures/contract/*.json`, 31 файл) - байтовая копия CRM
-`tests/contract/*.json` на коммите `02878fa` (полный SHA в `tests/fixtures/contract/CRM_VERSION`).
+Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.1.3.
+Контрактные фикстуры (`tests/fixtures/contract/*.json`, 32 файла) - байтовая копия CRM
+`tests/contract/*.json` на коммите `55b72c1` (полный SHA в `tests/fixtures/contract/CRM_VERSION`).
 Каждую фикстуру разбирает `tests/test_contract_fixtures.py`; пересинхронизация и проверка для CI:
 `scripts/sync_contract_fixtures.py --crm <CRM> [--check]`.
 
@@ -25,6 +25,7 @@
 | `plans.import_(items)` | POST | `/api/internal/plans/import` | не проверяется CRM, см. ниже | `PlansImportResult` |
 | `plans.get(account_id)` | GET | `/api/internal/plans/{account_id}` | нет | `AccountPlans` |
 | `plans.list_updated(updated_since, limit, cursor)` | GET | `/api/internal/plans` | нет | `PlansPage` |
+| `catalog.get()` | GET | `/api/internal/catalog` | нет | `list[CatalogProduct]` (то же, что `billing.products()`, без аккаунта; `Cache-Control: private, max-age=60`) |
 | `ai.ensure_key(account_id, function)` | POST | `/api/internal/ai/key/ensure` | нет | `AiKey` (единственный ответ с секретом) |
 | `ai.key_stats(account_id)` | GET | `/api/internal/ai/key/{account_id}/stats` | нет | `AiKeyStats` |
 

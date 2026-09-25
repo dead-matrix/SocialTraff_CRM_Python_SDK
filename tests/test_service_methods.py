@@ -64,6 +64,18 @@ STATS = {
     "disabled": False,
 }
 
+PRODUCT = {
+    "product_id": 1,
+    "title": "Cabinet Pro",
+    "kind": "subscription",
+    "price_rub_kopecks": 29000,
+    "price_usd_cents": None,
+    "feature_keys": ["cabinet.pro"],
+    "billed_per_month": True,
+    "ai_tokens": None,
+    "ai_functions": None,
+}
+
 
 def ok(data: Any) -> httpx.Response:
     return httpx.Response(200, json={"status": "success", "data": data})
@@ -224,6 +236,7 @@ ROUTES: list[tuple[str, Call, str, str, Any, Any]] = [
         {"secret": SECRET, "key_mode": "own", "source": "minted"},
     ),
     ("ai.key_stats", lambda c: c.ai.key_stats(11), "GET", "/ai/key/11/stats", None, STATS),
+    ("catalog.get", lambda c: c.catalog.get(), "GET", "/catalog", None, {"items": [PRODUCT]}),
 ]
 
 
@@ -296,6 +309,21 @@ async def test_plans_models_and_list_query() -> None:
     assert first.version == 3 and first.plans["main"].plan == "pro"
     assert first.plans["ai"].plan is None and first.plans["ai"].expires_at is None
     assert page.items[1].version is None and page.items[1].plans == {}
+
+
+async def test_catalog_get_returns_products_and_retries_get(sleeps: list[float]) -> None:
+    recorder = Recorder(fail(503, "unavailable"), ok({"items": [PRODUCT]}))
+    async with client_for(recorder) as client:
+        items = await client.catalog.get()
+    assert len(recorder.requests) == 2 and len(sleeps) == 1
+    assert [item.feature_keys for item in items] == [["cabinet.pro"]]
+    assert items[0].price_rub_kopecks == 29000 and items[0].price_usd_cents is None
+
+
+async def test_catalog_get_bad_token_is_auth_error() -> None:
+    async with client_for(Recorder(fail(403, "forbidden"))) as client:
+        with pytest.raises(AuthError):
+            await client.catalog.get()
 
 
 async def test_remove_absent_member_parses_nulls() -> None:

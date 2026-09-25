@@ -1,0 +1,35 @@
+{
+  "code": null,
+  "data": {
+    "items": [
+      {
+        "ai_functions": null,
+        "ai_tokens": null,
+        "billed_per_month": true,
+        "feature_keys": [
+          "cabinet.pro"
+        ],
+        "kind": "subscription",
+        "price_rub_kopecks": 29000,
+        "price_usd_cents": 500,
+        "product_id": 1,
+        "title": "Кабинет Pro"
+      },
+      {
+        "ai_functions": null,
+        "ai_tokens": null,
+        "billed_per_month": true,
+        "feature_keys": [
+          "privetka.pro"
+        ],
+        "kind": "subscription",
+        "price_rub_kopecks": 99000,
+        "price_usd_cents": 1200,
+        "product_id": 3,
+        "title": "Приветка Pro"
+      }
+    ]
+  },
+  "message": null,
+  "status": "success"
+}

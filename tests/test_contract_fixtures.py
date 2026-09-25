@@ -91,6 +91,7 @@ CustomerCall = Callable[[CustomerClient], Awaitable[Any]]
 SERVICE_CALLS: dict[str, tuple[ServiceCall, type]] = {
     "service_ai_key_ensure.json": (lambda crm: crm.ai.ensure_key(1042), AiKey),
     "service_ai_key_stats.json": (lambda crm: crm.ai.key_stats(1042), AiKeyStats),
+    "service_catalog.json": (lambda crm: crm.catalog.get(), list),
     "service_customer_id.json": (lambda crm: crm.identity.issue_customer_id(1042), CustomerId),
     "service_identity_import.json": (
         lambda crm: crm.identity.import_(
@@ -391,6 +392,20 @@ async def test_products_fixture_items() -> None:
     envelope = _load("customer_billing_products.json")
     items = [CatalogProduct.model_validate(item) for item in envelope["data"]["items"]]
     assert {tuple(item.feature_keys) for item in items} == {("cabinet.pro",), ("privetka.pro",)}
+
+
+async def test_service_catalog_equals_customer_products() -> None:
+    call, _ = SERVICE_CALLS["service_catalog.json"]
+    async with ServiceClient(
+        BASE_URL, "svc", transport=_mock(_load("service_catalog.json"))
+    ) as crm:
+        items = await call(crm)
+    assert all(isinstance(item, CatalogProduct) for item in items)
+    assert _load("service_catalog.json")["data"] == _load("customer_billing_products.json")["data"]
+
+
+def test_webhook_fixture_url_is_the_bosslink_route() -> None:
+    assert _load("webhook_product_request.json")["url"].endswith("/api/v1/crm/webhook")
 
 
 async def test_plans_get_fixture_free_privetka() -> None:

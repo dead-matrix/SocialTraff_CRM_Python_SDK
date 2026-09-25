@@ -9,7 +9,7 @@ from typing import Any, Self
 import httpx
 
 from ._http import DEFAULT_ATTEMPTS, DEFAULT_TIMEOUT, IDEMPOTENCY_HEADER, HttpTransport
-from ._service_api import IdentityApi, PlansApi, ServiceAiApi
+from ._service_api import CatalogApi, IdentityApi, PlansApi, ServiceAiApi
 from .errors import ConfigError
 
 __all__ = ["SERVICE_TOKEN_HEADER", "ServiceClient"]
@@ -21,7 +21,7 @@ BASE_PATH = "/api/internal"
 class ServiceClient:
     """Product backend -> CRM client.
 
-    Methods live in the ``identity``, ``plans`` and ``ai`` namespaces.
+    Methods live in the ``identity``, ``plans``, ``catalog`` and ``ai`` namespaces.
     ``retries`` is the total number of attempts, including the first one.
     """
 
@@ -45,6 +45,7 @@ class ServiceClient:
         )
         self.identity = IdentityApi(self._request)
         self.plans = PlansApi(self._request)
+        self.catalog = CatalogApi(self._request)
         self.ai = ServiceAiApi(self._request)
 
     async def _request(
