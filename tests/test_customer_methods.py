@@ -151,6 +151,20 @@ ROUTES: list[tuple[str, Call, str, str, str, Any]] = [
         {"from": "2026-09-01", "to": "2026-09-30", "bucket": "day", "items": []},
     ),
     (
+        "ai.key",
+        lambda c: c.ai.key(),
+        "GET",
+        "/ai/key",
+        "ai:read",
+        {
+            "mask": "sk-or-…abcd",
+            "usage_usd": 0.0,
+            "limit_usd": None,
+            "limit_remaining_usd": None,
+            "disabled": False,
+        },
+    ),
+    (
         "referrals.withdrawals",
         lambda c: c.referrals.withdrawals(),
         "GET",
@@ -358,6 +372,48 @@ async def test_error_envelopes_map_to_sdk_errors(
         with pytest.raises(error) as info:
             await client.referrals.withdraw("wallet", idempotency_key="k")
     assert getattr(info.value, "code", None) == code
+
+
+async def test_ai_key_parses_stats(ed25519_keys: tuple[bytes, bytes]) -> None:
+    stats = {
+        "mask": "sk-or-…abcd",
+        "usage_usd": 2.5,
+        "limit_usd": 10.0,
+        "limit_remaining_usd": 7.5,
+        "disabled": True,
+    }
+    async with client_for(ed25519_keys[0], Recorder(ok(stats))) as client:
+        result = await client.ai.key()
+    assert result.mask == "sk-or-…abcd" and result.usage_usd == 2.5
+    assert result.limit_remaining_usd == 7.5 and result.disabled is True
+
+
+@pytest.mark.parametrize(
+    ("response", "error", "code"),
+    [
+        (fail(404, "not_found"), NotFoundError, "not_found"),
+        (fail(503, "upstream_unavailable"), ApiError, "upstream_unavailable"),
+    ],
+)
+async def test_ai_key_errors(
+    ed25519_keys: tuple[bytes, bytes],
+    response: httpx.Response,
+    error: type[Exception],
+    code: str,
+) -> None:
+    recorder = Recorder(response)
+    async with CustomerClient(
+        BASE_URL,
+        AssertionSigner(ed25519_keys[0], kid="k1"),
+        ACCOUNT,
+        42,
+        retries=1,
+        transport=httpx.MockTransport(recorder),
+    ) as client:
+        with pytest.raises(error) as info:
+            await client.ai.key()
+    assert getattr(info.value, "code", None) == code
+    assert len(recorder.requests) == 1
 
 
 async def test_get_payment_escapes_path(ed25519_keys: tuple[bytes, bytes]) -> None:

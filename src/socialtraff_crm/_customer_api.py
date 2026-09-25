@@ -27,6 +27,7 @@ from .models.customer import (
     WithdrawalPage,
     WithdrawalRequest,
 )
+from .models.service import AiKeyStats
 
 __all__ = ["AiApi", "BillingApi", "ReferralsApi"]
 
@@ -181,6 +182,15 @@ class AiApi(_Namespace):
             },
         )
         return _parse(AiUsage, data, "ai.usage")
+
+    async def key(self) -> AiKeyStats:
+        """Mask and spending of the account AI key (``ai:read``); the secret is never returned.
+
+        No key yet is ``NotFoundError``; provider stats being down is ``ApiError`` with
+        ``code="upstream_unavailable"`` (HTTP 503).
+        """
+        data = await self._request("GET", "/ai/key", scopes=[SCOPE_AI_READ])
+        return _parse(AiKeyStats, data, "ai.key")
 
 
 class ReferralsApi(_Namespace):
