@@ -4,8 +4,8 @@
   "payload": {
     "account_id": 1042,
     "plan": "pro",
-    "plan_until": "2026-10-25T23:59:59+03:00",
+    "plan_until": "2026-10-25T12:00:00+03:00",
     "product": "cabinet",
-    "version": 5817
+    "version": 1
   }
 }

@@ -1,0 +1,13 @@
+{
+  "code": null,
+  "data": {
+    "account_id": 2001,
+    "buyer_id": 8001,
+    "created": true,
+    "joined_at": "2026-09-25T12:00:00+03:00",
+    "removed_at": null,
+    "role": "owner"
+  },
+  "message": null,
+  "status": "success"
+}

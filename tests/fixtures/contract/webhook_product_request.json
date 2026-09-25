@@ -1,0 +1,9 @@
+{
+  "body": "{\"event_id\": \"0192f3a4-5b6c-7d8e-9f01-23456789abcd\", \"event_type\": \"product.plan_changed\", \"payload\": {\"account_id\": 1042, \"plan\": \"pro\", \"plan_until\": \"2026-10-25T12:00:00+03:00\", \"product\": \"cabinet\", \"version\": 5817}}",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-CRM-Signature": "729d96ce699763aabdddc52c052599e32858d666353a66f71fa77b64f9969c9e"
+  },
+  "method": "POST",
+  "url": "https://bosslink.test/crm/webhook"
+}

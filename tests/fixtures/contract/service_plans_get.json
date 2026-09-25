@@ -1,12 +1,20 @@
 {
-  "status": "success",
+  "code": null,
   "data": {
     "account_id": 1042,
-    "version": 5817,
-    "updated_at": "2026-09-25T14:03:11+03:00",
     "plans": {
-      "cabinet": {"plan": "pro", "expires_at": "2026-10-25T23:59:59+03:00"},
-      "privetka": {"plan": null, "expires_at": null}
-    }
-  }
+      "cabinet": {
+        "expires_at": "2026-10-25T23:59:59+03:00",
+        "plan": "pro"
+      },
+      "privetka": {
+        "expires_at": null,
+        "plan": null
+      }
+    },
+    "updated_at": "2026-09-25T12:00:00+03:00",
+    "version": 1
+  },
+  "message": null,
+  "status": "success"
 }

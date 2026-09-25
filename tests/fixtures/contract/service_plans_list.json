@@ -1,23 +1,25 @@
 {
-  "status": "success",
+  "code": null,
   "data": {
     "items": [
       {
         "account_id": 1042,
-        "version": 5817,
-        "updated_at": "2026-09-25T14:03:11+03:00",
         "plans": {
-          "cabinet": {"plan": "pro", "expires_at": "2026-10-25T23:59:59+03:00"},
-          "privetka": {"plan": null, "expires_at": null}
-        }
-      },
-      {
-        "account_id": 1043,
-        "version": null,
-        "updated_at": null,
-        "plans": {}
+          "cabinet": {
+            "expires_at": "2026-10-25T23:59:59+03:00",
+            "plan": "pro"
+          },
+          "privetka": {
+            "expires_at": null,
+            "plan": null
+          }
+        },
+        "updated_at": "2026-09-25T12:00:00+03:00",
+        "version": 1
       }
     ],
-    "next_cursor": "eyJpZCI6MTA0M30"
-  }
+    "next_cursor": "sample"
+  },
+  "message": null,
+  "status": "success"
 }

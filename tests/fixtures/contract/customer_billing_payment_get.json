@@ -1,0 +1,27 @@
+{
+  "code": null,
+  "data": {
+    "amount_rub_kopecks": 29000,
+    "checkout_url": "sample",
+    "created_at": "2026-09-25T12:00:00+03:00",
+    "currency": "RUB",
+    "description": "Доступ к модулю Кабинет Pro на 1 месяц.",
+    "fx_rate_rub_usd": 95.5,
+    "invoiced_at": "2026-09-25T12:00:00+03:00",
+    "items": [
+      {
+        "price_rub_kopecks": 29000,
+        "quantity": 1,
+        "title": "Кабинет Pro"
+      }
+    ],
+    "paid_at": null,
+    "payment_method": "sbp",
+    "payment_public_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+    "provider": "platega",
+    "status": "invoiced",
+    "web_return_url": "https://app.socialtraff.test/billing/return"
+  },
+  "message": null,
+  "status": "success"
+}

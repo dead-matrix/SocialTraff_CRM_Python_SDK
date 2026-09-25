@@ -1,0 +1,12 @@
+{
+  "event_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+  "event_type": "subscription_changed",
+  "payload": {
+    "account_id": 1042,
+    "bot_id": 10,
+    "frozen": false,
+    "has_active_subscription": true,
+    "reason": "plan_changed",
+    "user_id": 5550001
+  }
+}

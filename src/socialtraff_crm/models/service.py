@@ -106,7 +106,11 @@ class AiKey(CrmModel):
 
 
 class AiKeyStats(CrmModel):
-    """Mask and spending of the account AI key; the secret itself is never returned here."""
+    """Mask and spending of the account AI key; the secret itself is never returned here.
+
+    ``mask`` is built by CRM as ``sk-or-`` + ``…`` (U+2026) + the last 4 characters of the key,
+    for example ``sk-or-…9f2c``. Show it as is, do not parse it.
+    """
 
     mask: str
     usage_usd: float

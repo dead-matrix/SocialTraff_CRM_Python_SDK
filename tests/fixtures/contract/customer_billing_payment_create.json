@@ -1,0 +1,13 @@
+{
+  "code": null,
+  "data": {
+    "amount_rub_kopecks": 29000,
+    "checkout_url": "sample",
+    "pay_url": "sample",
+    "payment_public_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+    "return_to": "https://app.socialtraff.test/billing/return",
+    "status": "invoiced"
+  },
+  "message": null,
+  "status": "success"
+}

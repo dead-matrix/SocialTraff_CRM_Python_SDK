@@ -1,0 +1,23 @@
+{
+  "event_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+  "event_type": "product.notify",
+  "payload": {
+    "account_id": 1044,
+    "button": {
+      "url": "https://t.me/socialtraff_support_bot?start=crm_access_expired_followup"
+    },
+    "kind": "access_expired_followup_fallback",
+    "params": {
+      "expires_date": "2026-10-02",
+      "idempotency_key": "account:1044:10:expired_after_1d:2026-10-02:hash",
+      "kind": "expired_after_1d",
+      "modules": [
+        {
+          "key": "cabinet.pro",
+          "title": "Кабинет Pro"
+        }
+      ],
+      "photo_url": null
+    }
+  }
+}

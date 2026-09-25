@@ -1,0 +1,22 @@
+{
+  "code": null,
+  "data": {
+    "available_usd_cents": 0,
+    "earned_usd_cents": 0,
+    "min_withdrawal_usd_cents": 1000,
+    "percent": 20,
+    "ref_bot_link": "https://t.me/socialtraff_robot?start=ref_OWNER1",
+    "ref_link": "https://socialtraff.com/?ref=OWNER1",
+    "referred_payments_count": 0,
+    "referred_turnover_rub_kopecks": 0,
+    "registrations": 1,
+    "withdraw_methods": [
+      "subscription",
+      "wallet"
+    ],
+    "withdrawn_subscription_usd_cents": 0,
+    "withdrawn_wallet_usd_cents": 0
+  },
+  "message": null,
+  "status": "success"
+}

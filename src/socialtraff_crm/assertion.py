@@ -30,8 +30,8 @@ MAX_LIFETIME_SECONDS = 120
 KNOWN_SCOPES = frozenset(
     {"billing:read", "billing:write", "ai:read", "referrals:read", "referrals:write"}
 )
-# CRM rejects a token without this claim (token_use_mismatch): it separates the customer
-# assertion from staff JWTs and link assertions signed with the same key.
+# CRM rejects a token without this claim (token_use_mismatch): it keeps the customer
+# assertion apart from any other JWT that could be signed with the same key.
 TOKEN_USE = "customer_assertion"
 _ACT_MAX = 2**63 - 1
 

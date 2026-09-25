@@ -1,0 +1,15 @@
+{
+  "code": null,
+  "data": {
+    "buyer_id": 8001,
+    "created": true,
+    "created_at": "2026-09-25T12:00:00+03:00",
+    "display_name": "Buyer",
+    "email": "b@example.com",
+    "ref_code": "sample",
+    "tg_id": 5558001,
+    "updated_at": "2026-09-25T12:00:00+03:00"
+  },
+  "message": null,
+  "status": "success"
+}

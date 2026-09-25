@@ -88,6 +88,13 @@ class PaymentItem(CrmModel):
 
 
 class Payment(CrmModel):
+    """A payment as the customer plane shows it.
+
+    There is no ``pay_url`` here: CRM returns the provider link only once, in the
+    ``create_payment`` answer (``CheckoutSession.pay_url``). ``fx_rate_rub_usd`` is the RUB per
+    1 USD rate CRM fixed on the draft (``None`` when CRM had no rate at that moment).
+    """
+
     payment_public_id: str
     status: str
     amount_rub_kopecks: int
@@ -168,7 +175,15 @@ class AiUsage(CrmModel):
 
 
 class ReferralSummary(CrmModel):
+    """Referral program of the account owner.
+
+    ``ref_link`` is the web link (``https://socialtraff.com/?ref=<code>``), ``ref_bot_link`` the
+    product bot deep link (``https://t.me/socialtraff_robot?start=ref_<code>``). ``None`` only
+    from a CRM older than the bot link.
+    """
+
     ref_link: str
+    ref_bot_link: str | None = None
     percent: int
     registrations: int
     referred_payments_count: int

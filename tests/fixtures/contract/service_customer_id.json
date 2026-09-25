@@ -1,7 +1,9 @@
 {
-  "status": "success",
+  "code": null,
   "data": {
     "account_id": 1042,
-    "public_customer_id": "3f2b8c1e-8f4a-4d0b-9a57-0c7e6f1d2a90"
-  }
+    "public_customer_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd"
+  },
+  "message": null,
+  "status": "success"
 }

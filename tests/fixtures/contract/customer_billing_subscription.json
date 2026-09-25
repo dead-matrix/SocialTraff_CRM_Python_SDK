@@ -1,0 +1,21 @@
+{
+  "code": null,
+  "data": {
+    "active": true,
+    "ends_at": "2026-10-25T12:00:00+03:00",
+    "features": [
+      {
+        "ends_at": "2026-10-25T12:00:00+03:00",
+        "key": "cabinet.pro",
+        "title": "Кабинет Pro"
+      }
+    ],
+    "frozen": false,
+    "frozen_at": null,
+    "products": [
+      "Кабинет Pro"
+    ]
+  },
+  "message": null,
+  "status": "success"
+}
