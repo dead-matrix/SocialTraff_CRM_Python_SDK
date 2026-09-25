@@ -17,7 +17,10 @@ __all__ = [
     "DEFAULT_ISSUER",
     "KNOWN_SCOPES",
     "MAX_LIFETIME_SECONDS",
+    "TOKEN_USE",
     "AssertionSigner",
+    "is_canonical_customer_id",
+    "is_valid_actor",
 ]
 
 DEFAULT_ISSUER = "socialtraff-bosslink"
@@ -27,6 +30,30 @@ MAX_LIFETIME_SECONDS = 120
 KNOWN_SCOPES = frozenset(
     {"billing:read", "billing:write", "ai:read", "referrals:read", "referrals:write"}
 )
+# CRM rejects a token without this claim (token_use_mismatch): it separates the customer
+# assertion from staff JWTs and link assertions signed with the same key.
+TOKEN_USE = "customer_assertion"
+_ACT_MAX = 2**63 - 1
+
+
+def is_canonical_customer_id(value: object) -> bool:
+    """True for a lowercase hyphenated non-nil UUID, the only ``sub`` form CRM accepts.
+
+    CRM compares ``public_customer_id`` as a string, so braces, ``urn:uuid:`` or upper case
+    would parse to the same UUID yet name a different customer; CRM rejects them outright.
+    """
+    if not isinstance(value, str) or len(value) != 36 or value != value.lower():
+        return False
+    try:
+        parsed = uuid.UUID(value)
+    except ValueError:
+        return False
+    return str(parsed) == value and parsed.int != 0
+
+
+def is_valid_actor(value: object) -> bool:
+    """True for a positive ``buyer_id``; ``bool`` is rejected although it subclasses ``int``."""
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= _ACT_MAX
 
 
 class AssertionSigner:
@@ -61,10 +88,10 @@ class AssertionSigner:
 
     def sign(self, sub: str, scopes: Iterable[str], actor_buyer_id: int) -> str:
         """Return a compact JWS for account ``sub`` (``public_customer_id``) and actor buyer."""
-        if not isinstance(sub, str) or not sub:
-            raise ValidationError("sub (public_customer_id) must be a non-empty string")
-        if isinstance(actor_buyer_id, bool) or not isinstance(actor_buyer_id, int):
-            raise ValidationError("actor_buyer_id must be an int")
+        if not is_canonical_customer_id(sub):
+            raise ValidationError("sub (public_customer_id) must be a lowercase canonical UUID")
+        if not is_valid_actor(actor_buyer_id):
+            raise ValidationError("actor_buyer_id must be a positive int")
         scope_list: list[str] = []
         for scope in scopes:
             if not isinstance(scope, str) or not scope or any(ch.isspace() for ch in scope):
@@ -84,5 +111,6 @@ class AssertionSigner:
             "jti": uuid.uuid4().hex,
             "scope": " ".join(scope_list),
             "act": actor_buyer_id,
+            "token_use": TOKEN_USE,
         }
         return jwt.encode(claims, self._key, algorithm="EdDSA", headers={"kid": self.kid})

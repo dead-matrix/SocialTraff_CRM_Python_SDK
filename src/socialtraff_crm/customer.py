@@ -9,8 +9,9 @@ from typing import Any, Self
 
 import httpx
 
+from ._customer_api import AiApi, BillingApi, ReferralsApi
 from ._http import DEFAULT_ATTEMPTS, DEFAULT_TIMEOUT, IDEMPOTENCY_HEADER, HttpTransport
-from .assertion import AssertionSigner
+from .assertion import AssertionSigner, is_canonical_customer_id, is_valid_actor
 from .errors import ConfigError
 
 __all__ = ["ASSERTION_HEADER", "CustomerClient"]
@@ -23,7 +24,7 @@ _READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 class CustomerClient:
     """Client acting on behalf of one account and one actor buyer.
 
-    Namespaces ``billing``, ``ai`` and ``referrals`` are added in v0.1.0 (stage Ф7).
+    Methods live in the ``billing``, ``ai`` and ``referrals`` namespaces.
     ``retries`` is the total number of attempts, including the first one.
     """
 
@@ -40,16 +41,19 @@ class CustomerClient:
     ) -> None:
         if not isinstance(signer, AssertionSigner):
             raise ConfigError("signer must be an AssertionSigner")
-        if not account_public_id:
-            raise ConfigError("account_public_id must not be empty")
-        if isinstance(actor_buyer_id, bool) or not isinstance(actor_buyer_id, int):
-            raise ConfigError("actor_buyer_id must be an int")
+        if not is_canonical_customer_id(account_public_id):
+            raise ConfigError("account_public_id must be a lowercase canonical UUID")
+        if not is_valid_actor(actor_buyer_id):
+            raise ConfigError("actor_buyer_id must be a positive int")
         self._signer = signer
         self.account_public_id = account_public_id
         self.actor_buyer_id = actor_buyer_id
         self._http = HttpTransport(
             base_url, timeout=timeout, max_attempts=retries, transport=transport
         )
+        self.billing = BillingApi(self._request)
+        self.ai = AiApi(self._request)
+        self.referrals = ReferralsApi(self._request)
 
     async def _request(
         self,

@@ -10,7 +10,7 @@
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
 > Статус: `0.1.0.dev0`, каркас. Транспорт, ошибки, ретраи, assertion и проверка вебхуков готовы.
-> Методы `ServiceClient` и `CustomerClient` **появятся в v0.1.0**.
+> Методы `CustomerClient` готовы, кроме метода ключа AI. Методы `ServiceClient` **появятся в v0.1.0**.
 
 ## Установка
 
@@ -57,15 +57,14 @@ async with CustomerClient(
     account_public_id="3f2b8c1e-8f4a-4d0b-9a57-0c7e6f1d2a90",  # public_customer_id аккаунта
     actor_buyer_id=42,  # buyer_id действующего человека, claim act
 ) as customer:
-    # появится в v0.1.0:
-    # await customer.billing.subscription()
-    # await customer.ai.balance()
-    # await customer.referrals.info()
-    ...
+    subscription = await customer.billing.subscription()
+    balance = await customer.ai.balance()
+    referrals = await customer.referrals.get()
 ```
 
 Assertion выпускается заново на каждую попытку запроса: срок 60 с, случайный `jti`, claim `scope`
-со скоупами конкретного метода. Для записей SDK сам ставит `Idempotency-Key`, ключ одинаков для всех
+со скоупами конкретного метода и `token_use="customer_assertion"`. `account_public_id` должен быть
+UUID в каноническом виде нижним регистром, иначе CRM отвергнет assertion. Для записей SDK сам ставит `Idempotency-Key`, ключ одинаков для всех
 своих ретраев. Если запрос повторяет вызывающий код, ключ нужно передать явно.
 
 Скоупы: `billing:read`, `billing:write`, `ai:read`, `referrals:read`, `referrals:write`.

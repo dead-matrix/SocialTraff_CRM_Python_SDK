@@ -8,7 +8,7 @@ except PackageNotFoundError:  # running from a source tree without installation
     __version__ = "0.0.0"
 
 from . import webhooks
-from .assertion import KNOWN_SCOPES, AssertionSigner
+from .assertion import KNOWN_SCOPES, TOKEN_USE, AssertionSigner
 from .customer import CustomerClient
 from .errors import (
     ApiError,
@@ -25,6 +25,7 @@ from .service import ServiceClient
 
 __all__ = [
     "KNOWN_SCOPES",
+    "TOKEN_USE",
     "ApiError",
     "AssertionSigner",
     "AuthError",

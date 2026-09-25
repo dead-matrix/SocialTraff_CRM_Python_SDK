@@ -43,6 +43,7 @@ async def test_get_sends_fresh_assertion_without_idempotency_key(
     assert claims["sub"] == ACCOUNT
     assert claims["act"] == 42
     assert claims["scope"] == "billing:read"
+    assert claims["token_use"] == "customer_assertion"
 
 
 async def test_write_retry_keeps_idempotency_key_and_resigns(
@@ -95,6 +96,12 @@ def test_customer_config_errors(ed25519_keys: tuple[bytes, bytes]) -> None:
     signer = AssertionSigner(ed25519_keys[0], kid="k1")
     with pytest.raises(ConfigError):
         CustomerClient(BASE_URL, signer, "", 1)
+    with pytest.raises(ConfigError):
+        CustomerClient(BASE_URL, signer, ACCOUNT.upper(), 1)
+    with pytest.raises(ConfigError):
+        CustomerClient(BASE_URL, signer, ACCOUNT, 0)
+    with pytest.raises(ConfigError):
+        CustomerClient(BASE_URL, signer, ACCOUNT, True)
     with pytest.raises(ConfigError):
         CustomerClient(BASE_URL, signer, ACCOUNT, "1")  # type: ignore[arg-type]
     with pytest.raises(ConfigError):
