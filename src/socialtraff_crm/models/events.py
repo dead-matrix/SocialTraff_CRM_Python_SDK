@@ -10,6 +10,7 @@ from .common import AwareDatetime, CrmModel
 
 __all__ = [
     "EVENT_ADAPTER",
+    "KNOWN_NOTIFY_KINDS",
     "CrmEvent",
     "GenericEvent",
     "NotifyButton",
@@ -17,11 +18,28 @@ __all__ = [
     "NotifyPayload",
     "PlanChangedEvent",
     "PlanChangedPayload",
+    "SubscriptionChangedPayload",
 ]
 
 PLAN_CHANGED = "product.plan_changed"
 NOTIFY = "product.notify"
 _GENERIC_TAG = "__generic__"
+
+# Reference list only: ``NotifyPayload.kind`` stays ``str`` so a kind added in CRM does not
+# break parsing in an older SDK. Fallback kinds are ``"<messenger event_type>_fallback"``,
+# sent when the account owner has no messenger chat; ``params`` then carry that event payload.
+KNOWN_NOTIFY_KINDS = frozenset(
+    {
+        "payment_confirmed",
+        "expiring_7d",
+        "expiring_3d",
+        "expiring_1d",
+        "access_expired_followup_fallback",
+        "payment_reminder_fallback",
+        "unpaid_invoice_24h_fallback",
+        "payment_expired_fallback",
+    }
+)
 
 
 class PlanChangedPayload(CrmModel):
@@ -43,6 +61,21 @@ class NotifyPayload(CrmModel):
     kind: str
     params: dict[str, Any] = Field(default_factory=dict)
     button: NotifyButton | None = None
+
+
+class SubscriptionChangedPayload(CrmModel):
+    """Payload of ``subscription_changed``.
+
+    Messenger-only: CRM publishes it to the messenger outbox, never to the product webhook,
+    so ``webhooks.verify`` does not parse it and it is not part of ``CrmEvent``.
+    """
+
+    account_id: int
+    user_id: int
+    has_active_subscription: bool
+    # Always false in CRM today; kept for the shape shared with the Go SDK.
+    frozen: bool = False
+    reason: Literal["plan_changed", "expired"]
 
 
 class _EventBase(CrmModel):

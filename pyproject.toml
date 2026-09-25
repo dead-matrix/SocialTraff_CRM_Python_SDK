@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "socialtraff-crm-sdk"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Async Python SDK for SocialTraff CRM (service plane, customer plane, webhooks)"
 readme = "README.md"
 requires-python = ">=3.12"

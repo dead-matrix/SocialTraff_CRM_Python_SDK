@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "data": {
+    "mask": "sk-or-v1-...9f2c",
+    "usage_usd": 3.4172,
+    "limit_usd": 10.0,
+    "limit_remaining_usd": 6.5828,
+    "disabled": false
+  }
+}

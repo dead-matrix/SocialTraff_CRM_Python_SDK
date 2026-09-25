@@ -19,6 +19,7 @@ from .customer import (
     WithdrawalRequest,
 )
 from .events import (
+    KNOWN_NOTIFY_KINDS,
     CrmEvent,
     GenericEvent,
     NotifyButton,
@@ -26,6 +27,7 @@ from .events import (
     NotifyPayload,
     PlanChangedEvent,
     PlanChangedPayload,
+    SubscriptionChangedPayload,
 )
 from .service import (
     Account,
@@ -42,6 +44,7 @@ from .service import (
 )
 
 __all__ = [
+    "KNOWN_NOTIFY_KINDS",
     "Account",
     "AccountPlans",
     "AiBalance",
@@ -75,6 +78,7 @@ __all__ = [
     "PlansPage",
     "ReferralSummary",
     "Subscription",
+    "SubscriptionChangedPayload",
     "SubscriptionFeature",
     "Withdrawal",
     "WithdrawalPage",

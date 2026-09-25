@@ -9,8 +9,8 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.1.0.dev0`, каркас. Транспорт, ошибки, ретраи, assertion и проверка вебхуков готовы.
-> Методы `CustomerClient` готовы, кроме метода ключа AI. Методы `ServiceClient` **появятся в v0.1.0**.
+> Статус: `0.1.0`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> формы ответов и событий сверены с CRM контрактными фикстурами (`tests/fixtures/contract/`).
 
 ## Установка
 
@@ -34,14 +34,24 @@ from socialtraff_crm import ServiceClient
 async with ServiceClient(
     "http://crm.socialtraff.com", service_token, timeout=10.0, retries=3
 ) as crm:
-    # появится в v0.1.0:
-    # await crm.identity.upsert_buyer(...)
-    # await crm.plans.get(account_id)
-    # await crm.ai.ensure_key(account_id)
-    ...
+    buyer = await crm.identity.put_buyer(42, tg_id=100500, display_name="Ann")
+    await crm.identity.put_account(1042, title="Ann", owner_buyer_id=42, is_personal=True)
+    await crm.identity.put_member(1042, 42, "owner")
+    customer_id = await crm.identity.issue_customer_id(1042)
+
+    plans = await crm.plans.get(1042)
+    page = await crm.plans.list_updated(since, limit=100)  # since с часовым поясом
+
+    key = await crm.ai.ensure_key(1042)  # key.secret: живой ключ, в repr не попадает
+    stats = await crm.ai.key_stats(1042)
 ```
 
-`retries` задаёт общее число попыток, включая первую.
+Заголовок авторизации `X-Service-Token`, префикс `/api/internal`. `retries` задаёт общее число
+попыток, включая первую. Все записи идемпотентны на стороне CRM: повтор с тем же телом отвечает
+200 и ничего не меняет. У `identity.import_` и `plans.import_` есть `idempotency_key`: с ним
+POST повторяется при сетевых сбоях. Даты без часового пояса SDK отвергает (`ValidationError`),
+потому что CRM прочла бы их как московское время. В `put_buyer` непереданное поле сохраняется,
+а явный `None` стирает значение. Полный список методов: [docs/CONTRACT.md](docs/CONTRACT.md).
 
 ## CustomerClient и AssertionSigner
 
@@ -59,6 +69,7 @@ async with CustomerClient(
 ) as customer:
     subscription = await customer.billing.subscription()
     balance = await customer.ai.balance()
+    key_stats = await customer.ai.key()  # маска и расход ключа AI, без секрета
     referrals = await customer.referrals.get()
 ```
 
@@ -110,6 +121,23 @@ async def crm_webhook(request: Request) -> dict:
             ...  # неизвестный тип: залогировать и ответить 200
     return {"status": "success", "data": None}
 ```
+
+События:
+
+- `product.plan_changed` (`PlanChangedEvent`): `account_id`, `product` (`cabinet` или `privetka`),
+  `plan`, `plan_until` (ISO с поясом или `null`), `version`. `version` монотонна по аккаунту и
+  продукту: событие со старой версией нужно отбросить.
+- `product.notify` (`NotifyEvent`): `account_id`, `kind`, `params`, `button` (`{url, text?}` или
+  `null`). Известные `kind` перечислены в `socialtraff_crm.models.KNOWN_NOTIFY_KINDS`:
+  `payment_confirmed`, `expiring_7d`, `expiring_3d`, `expiring_1d` и резервные
+  `<тип события мессенджера>_fallback` (например `payment_reminder_fallback`), которые CRM шлёт,
+  когда у владельца аккаунта нет чата в мессенджере. Поле `kind` остаётся строкой: новый `kind`
+  из CRM не ломает разбор, его нужно просто пропустить.
+- Любой другой тип разбирается как `GenericEvent`.
+
+`subscription_changed` в вебхук продукта не приходит: CRM отправляет его только мессенджеру.
+Модель `SubscriptionChangedPayload` (`account_id`, `user_id`, `has_active_subscription`, `frozen`,
+`reason` из `plan_changed`/`expired`) есть в SDK для потребителей этой очереди.
 
 ## Ошибки
 
