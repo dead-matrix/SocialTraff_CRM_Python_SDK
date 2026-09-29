@@ -1,5 +1,35 @@
 # Изменения
 
+## 0.2.0 (2026-09-29)
+
+Синхронизация с контрактом CRM на коммите `79def25`.
+
+- `CustomerClient.promo`: `activate(code)` -> `PromoActivation` (`POST /api/v1/customer/promo/activate`,
+  201, `billing:write`, любая роль аккаунта) и `pending()` -> `list[PromoActivation]`
+  (`GET /api/v1/customer/promo`, `billing:read`). Отказ кода: `ValidationError` с
+  `code="promo_<причина>"`.
+- `referrals.set_code(code)` -> `PartnerCode` (`PUT /api/v1/customer/referrals/code`,
+  `billing:write`, с `Idempotency-Key`): свой код партнёра. Отказы: 422 `promo_invalid_code`,
+  409 `promo_code_taken`.
+- `billing.create_payment(..., promo_code=None, use_balance=False)`: промокод тем же запросом и
+  оплата подписки реферальным балансом. Поля уходят в тело только если заданы, поэтому с CRM без
+  промокодов обычный платёж работает как раньше. Ответ может быть `status="paid"` с `pay_url` и
+  `checkout_url` `None` (баланс покрыл всю цену).
+- `CheckoutSession` и `Payment`: `promo_discount_rub_kopecks`, `balance_spent_rub_kopecks`,
+  `balance_spent_usd_cents` (0 от старой CRM). `Payment.provider` может быть `"balance"`.
+- `ReferralSummary`: `first_percent`, `recurring_percent`, `hold_days`, `on_hold_usd_cents`,
+  `spent_on_subscriptions_usd_cents`, `promo_codes[PartnerCode]`, `paid_referrals_count`,
+  `promo_activations_count`, `pending_withdrawal` (`PendingWithdrawal` или `None`),
+  `recent_accruals[ReferralAccrual]`. От старой CRM скаляры `None`, списки пустые.
+  `withdrawn_subscription_usd_cents` теперь необязателен (0 по умолчанию). `withdraw_methods`
+  у CRM теперь `["wallet"]`: баланс на подписку тратится через `use_balance`.
+- Фикстуры: 6 новых (`customer_promo*.json`, `customer_referrals_code.json`,
+  `customer_billing_payment_*_balance*.json`), 3 обновлены, всего 38 файлов. В
+  `customer_referrals.json` `min_withdrawal_usd_cents` теперь 2000 (значение CRM).
+
+Обратная совместимость: только добавления; новые поля ответа необязательны, новые аргументы
+именованные со значениями по умолчанию. Минорная версия поднята из-за новых ручек.
+
 ## 0.1.3 (2026-09-25)
 
 Синхронизация с контрактом CRM на коммите `55b72c1`.

@@ -9,7 +9,7 @@ from typing import Any, Self
 
 import httpx
 
-from ._customer_api import AiApi, BillingApi, ReferralsApi
+from ._customer_api import AiApi, BillingApi, PromoApi, ReferralsApi
 from ._http import DEFAULT_ATTEMPTS, DEFAULT_TIMEOUT, IDEMPOTENCY_HEADER, HttpTransport
 from .assertion import AssertionSigner, is_canonical_customer_id, is_valid_actor
 from .errors import ConfigError
@@ -24,7 +24,7 @@ _READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 class CustomerClient:
     """Client acting on behalf of one account and one actor buyer.
 
-    Methods live in the ``billing``, ``ai`` and ``referrals`` namespaces.
+    Methods live in the ``billing``, ``promo``, ``ai`` and ``referrals`` namespaces.
     ``retries`` is the total number of attempts, including the first one.
     """
 
@@ -52,6 +52,7 @@ class CustomerClient:
             base_url, timeout=timeout, max_attempts=retries, transport=transport
         )
         self.billing = BillingApi(self._request)
+        self.promo = PromoApi(self._request)
         self.ai = AiApi(self._request)
         self.referrals = ReferralsApi(self._request)
 

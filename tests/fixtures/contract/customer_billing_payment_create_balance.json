@@ -1,15 +1,15 @@
 {
   "code": null,
   "data": {
-    "amount_rub_kopecks": 29000,
-    "balance_spent_rub_kopecks": 0,
-    "balance_spent_usd_cents": 0,
-    "checkout_url": "sample",
-    "pay_url": "sample",
+    "amount_rub_kopecks": 0,
+    "balance_spent_rub_kopecks": 29000,
+    "balance_spent_usd_cents": 304,
+    "checkout_url": null,
+    "pay_url": null,
     "payment_public_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
     "promo_discount_rub_kopecks": 0,
     "return_to": "https://app.socialtraff.test/billing/return",
-    "status": "invoiced"
+    "status": "paid"
   },
   "message": null,
   "status": "success"

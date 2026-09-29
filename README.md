@@ -9,7 +9,7 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.1.3`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> Статус: `0.2.0`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
 > формы ответов и событий сверены с контрактными фикстурами CRM (`tests/fixtures/contract/`,
 > коммит CRM в `tests/fixtures/contract/CRM_VERSION`). Изменения по версиям: [CHANGELOG.md](CHANGELOG.md).
 
@@ -24,12 +24,12 @@
 dependencies = ["socialtraff-crm-sdk"]
 
 [tool.uv.sources]
-socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.1.3" }
+socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.2.0" }
 ```
 
 Для доступа по SSH (deploy key) источник записывается как
-`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.1.3" }`.
-Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.1.3"`.
+`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.2.0" }`.
+Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.2.0"`.
 
 ## ServiceClient
 
@@ -79,7 +79,34 @@ async with CustomerClient(
     balance = await customer.ai.balance()
     key_stats = await customer.ai.key()  # маска и расход ключа AI, без секрета
     referrals = await customer.referrals.get()
+
+    # Промокод до оплаты: скидка ждёт следующего create_payment, бонусные дни - оплаты подписки.
+    activation = await customer.promo.activate("SALE15")  # 422 promo_<причина> -> ValidationError
+    pending = await customer.promo.pending()  # list[PromoActivation]
+
+    # Свой код партнёра (владелец из act): 409 promo_code_taken, 422 promo_invalid_code.
+    partner_code = await customer.referrals.set_code("My_Code")
+
+    # Промокод тем же запросом и оплата подписки реферальным балансом.
+    session = await customer.billing.create_payment(
+        product_id,
+        quantity=1,
+        provider="platega",
+        payment_method="sbp",
+        return_to="https://lk.socialtraff.com/billing",
+        promo_code="SALE15",
+        use_balance=True,
+    )
+    if session.status == "paid":
+        ...  # баланс покрыл всю цену: pay_url None, открывать нечего
+    else:
+        ...  # открыть session.pay_url, к оплате amount_rub_kopecks
 ```
+
+Скидка промокода уже заложена в цены позиций; `amount_rub_kopecks` = сумма позиций минус
+`balance_spent_rub_kopecks`. Платёж, оплаченный балансом целиком, в `get_payment` и
+`list_payments` приходит с `provider="balance"`. Смена баланса или скидки между расчётом и записью:
+`ApiError` 409 `balance_changed` или `promo_changed`, повторять с новым ключом.
 
 Assertion выпускается заново на каждую попытку запроса: срок 60 с, случайный `jti`, claim `scope`
 со скоупами конкретного метода и `token_use="customer_assertion"`. `account_public_id` должен быть
@@ -87,7 +114,9 @@ UUID в каноническом виде нижним регистром, ин�
 своих ретраев. Если запрос повторяет вызывающий код, ключ нужно передать явно.
 
 Скоупы: `billing:read`, `billing:write`, `ai:read`, `referrals:read`, `referrals:write`.
-`billing:write` выдаётся только ролям owner и admin: это проверяет продукт до подписи.
+Для `billing.create_payment` продукт до подписи проверяет роль owner или admin; `promo.activate`
+разрешён любой роли аккаунта, `referrals.set_code` личный (покупатель из `act`), хотя все три
+подписываются скоупом `billing:write`.
 
 ## Проверка вебхука
 
@@ -198,7 +227,7 @@ CRM_CHECKOUT=../CRM uv run pytest tests/test_contract_fixtures.py  # то же �
 что стоит в зависимостях, и держат рядом файл с тегом; обновляют вместе с тегом SDK:
 
 ```sh
-git -C <SDK> archive v0.1.3 tests/fixtures/contract | tar -x --strip-components=3 -C tests/fixtures/crm
+git -C <SDK> archive v0.2.0 tests/fixtures/contract | tar -x --strip-components=3 -C tests/fixtures/crm
 ```
 
 Порядок при изменении контракта CRM: CRM коммитит фикстуры, SDK синхронизирует их, правит

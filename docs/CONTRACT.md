@@ -1,8 +1,8 @@
 # Контракт SDK ↔ CRM
 
-Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.1.3.
-Контрактные фикстуры (`tests/fixtures/contract/*.json`, 32 файла) - байтовая копия CRM
-`tests/contract/*.json` на коммите `55b72c1` (полный SHA в `tests/fixtures/contract/CRM_VERSION`).
+Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.2.0.
+Контрактные фикстуры (`tests/fixtures/contract/*.json`, 38 файлов) - байтовая копия CRM
+`tests/contract/*.json` на коммите `79def25` (полный SHA в `tests/fixtures/contract/CRM_VERSION`).
 Каждую фикстуру разбирает `tests/test_contract_fixtures.py`; пересинхронизация и проверка для CI:
 `scripts/sync_contract_fixtures.py --crm <CRM> [--check]`.
 
@@ -45,9 +45,11 @@
 |---|---|---|---|---|---|
 | `billing.products()` | GET | `/api/v1/customer/billing/products` | `billing:read` | нет | `list[CatalogProduct]` |
 | `billing.subscription()` | GET | `/api/v1/customer/billing/subscription` | `billing:read` | нет | `Subscription` |
-| `billing.create_payment(...)` | POST (201) | `/api/v1/customer/billing/payments` | `billing:write` | да | `CheckoutSession` |
+| `billing.create_payment(..., promo_code, use_balance)` | POST (201) | `/api/v1/customer/billing/payments` | `billing:write` | да | `CheckoutSession` |
 | `billing.list_payments(cursor, limit)` | GET | `/api/v1/customer/billing/payments` | `billing:read` | нет | `PaymentPage` |
 | `billing.get_payment(id)` | GET | `/api/v1/customer/billing/payments/{payment_public_id}` | `billing:read` | нет | `Payment` |
+| `promo.activate(code)` | POST (201) | `/api/v1/customer/promo/activate` | `billing:write` | да | `PromoActivation` |
+| `promo.pending()` | GET | `/api/v1/customer/promo` | `billing:read` | нет | `list[PromoActivation]` |
 | `ai.balance()` | GET | `/api/v1/customer/ai/balance` | `ai:read` | нет | `AiBalance` |
 | `ai.history(function, cursor, limit)` | GET | `/api/v1/customer/ai/history` | `ai:read` | нет | `AiHistoryPage` |
 | `ai.usage(date_from, date_to)` | GET | `/api/v1/customer/ai/usage` (`from`, `to`) | `ai:read` | нет | `AiUsage` |
@@ -55,6 +57,16 @@
 | `referrals.get()` | GET | `/api/v1/customer/referrals` | `referrals:read` | нет | `ReferralSummary` |
 | `referrals.withdrawals(cursor, limit)` | GET | `/api/v1/customer/referrals/withdrawals` | `referrals:read` | нет | `WithdrawalPage` |
 | `referrals.withdraw(method)` | POST (202) | `/api/v1/customer/referrals/withdraw` | `referrals:write` | да | `WithdrawalRequest` |
+| `referrals.set_code(code)` | PUT | `/api/v1/customer/referrals/code` | `billing:write` | да | `PartnerCode` |
+
+Промокоды и баланс: отказ кода в `create_payment` и `promo.activate` - 422 `promo_<причина>`
+(`ValidationError`, `field: "code"`); `referrals.set_code` - 422 `promo_invalid_code` или 409
+`promo_code_taken`. `create_payment` с `use_balance=True` может ответить `status="paid"` с
+`pay_url` и `checkout_url` `null` (баланс покрыл всю цену), такой платёж в чтении приходит с
+`provider="balance"`. `CheckoutSession` и `Payment` несут `promo_discount_rub_kopecks`,
+`balance_spent_rub_kopecks`, `balance_spent_usd_cents`; сумма позиций минус
+`balance_spent_rub_kopecks` равна `amount_rub_kopecks`. 409 `balance_changed` и `promo_changed`
+(`ApiError`) повторять с новым ключом.
 
 Поля, которые легко пропустить: `Payment` (ответ `get_payment` и `list_payments`) не несёт
 `pay_url`, ссылка провайдера отдаётся только в ответе `create_payment` (`CheckoutSession.pay_url`);

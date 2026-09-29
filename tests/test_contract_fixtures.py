@@ -43,12 +43,14 @@ from socialtraff_crm.models import (
     ExpiringParams,
     IdentityImportResult,
     Member,
+    PartnerCode,
     Payment,
     PaymentConfirmedParams,
     PaymentExpiredParams,
     PaymentReminderParams,
     PlansImportResult,
     PlansPage,
+    PromoActivation,
     ReferralSummary,
     Subscription,
     SubscriptionChangedPayload,
@@ -138,6 +140,9 @@ SERVICE_CALLS: dict[str, tuple[ServiceCall, type]] = {
     "service_plans_list.json": (lambda crm: crm.plans.list_updated(SINCE), PlansPage),
 }
 
+PAYMENT_ID = "0192f3a4-5b6c-7d8e-9f01-23456789abcd"
+RETURN_TO = "https://app.socialtraff.test/billing/return"
+
 CUSTOMER_CALLS: dict[str, tuple[CustomerCall, type]] = {
     "customer_ai_key.json": (lambda c: c.ai.key(), AiKeyStats),
     "customer_billing_payment_create.json": (
@@ -145,18 +150,47 @@ CUSTOMER_CALLS: dict[str, tuple[CustomerCall, type]] = {
             1,
             quantity=1,
             provider="platega",
-            return_to="https://app.socialtraff.test/billing/return",
+            return_to=RETURN_TO,
             payment_method="sbp",
         ),
         CheckoutSession,
     ),
-    "customer_billing_payment_get.json": (
-        lambda c: c.billing.get_payment("0192f3a4-5b6c-7d8e-9f01-23456789abcd"),
+    "customer_billing_payment_create_balance.json": (
+        lambda c: c.billing.create_payment(
+            1, quantity=1, provider="platega", return_to=RETURN_TO, use_balance=True
+        ),
+        CheckoutSession,
+    ),
+    "customer_billing_payment_create_balance_partial.json": (
+        lambda c: c.billing.create_payment(
+            1,
+            quantity=1,
+            provider="platega",
+            return_to=RETURN_TO,
+            payment_method="sbp",
+            use_balance=True,
+        ),
+        CheckoutSession,
+    ),
+    "customer_billing_payment_get.json": (lambda c: c.billing.get_payment(PAYMENT_ID), Payment),
+    "customer_billing_payment_get_balance.json": (
+        lambda c: c.billing.get_payment(PAYMENT_ID),
         Payment,
     ),
     "customer_billing_products.json": (lambda c: c.billing.products(), list),
     "customer_billing_subscription.json": (lambda c: c.billing.subscription(), Subscription),
+    "customer_promo.json": (lambda c: c.promo.pending(), list),
+    "customer_promo_activate.json": (lambda c: c.promo.activate("SALE15"), PromoActivation),
     "customer_referrals.json": (lambda c: c.referrals.get(), ReferralSummary),
+    "customer_referrals_code.json": (lambda c: c.referrals.set_code("Owner_Promo"), PartnerCode),
+}
+
+#: Customer routes CRM answers with 201 Created.
+CUSTOMER_CREATED = {
+    "customer_billing_payment_create.json",
+    "customer_billing_payment_create_balance.json",
+    "customer_billing_payment_create_balance_partial.json",
+    "customer_promo_activate.json",
 }
 
 #: Product webhook events (``webhooks.verify``) and the typed params of each notify kind.
@@ -222,7 +256,7 @@ async def test_service_fixture_parses(name: str) -> None:
 async def test_customer_fixture_parses(name: str, ed25519_keys: tuple[bytes, bytes]) -> None:
     call, model = CUSTOMER_CALLS[name]
     signer = AssertionSigner(ed25519_keys[0], kid="test")
-    status = 201 if name == "customer_billing_payment_create.json" else 200
+    status = 201 if name in CUSTOMER_CREATED else 200
     async with CustomerClient(
         BASE_URL,
         signer,
@@ -376,16 +410,64 @@ async def test_payment_get_has_fx_rate_and_no_pay_url(ed25519_keys: tuple[bytes,
     assert not hasattr(payment, "pay_url")
 
 
-async def test_referral_summary_has_bot_link(ed25519_keys: tuple[bytes, bytes]) -> None:
-    call, _ = CUSTOMER_CALLS["customer_referrals.json"]
+async def _customer_result(name: str, ed25519_keys: tuple[bytes, bytes]) -> Any:
+    call, _ = CUSTOMER_CALLS[name]
     signer = AssertionSigner(ed25519_keys[0], kid="test")
-    transport = _mock(_load("customer_referrals.json"))
+    status = 201 if name in CUSTOMER_CREATED else 200
+    transport = _mock(_load(name), status)
     async with CustomerClient(
         BASE_URL, signer, ACCOUNT_PUBLIC_ID, 42, transport=transport
     ) as customer:
-        summary = await call(customer)
+        return await call(customer)
+
+
+async def test_referral_summary_has_bot_link(ed25519_keys: tuple[bytes, bytes]) -> None:
+    summary = await _customer_result("customer_referrals.json", ed25519_keys)
     assert summary.ref_bot_link == "https://t.me/socialtraff_robot?start=ref_OWNER1"
     assert summary.ref_link == "https://socialtraff.com/?ref=OWNER1"
+
+
+async def test_referral_summary_partner_fields(ed25519_keys: tuple[bytes, bytes]) -> None:
+    summary = await _customer_result("customer_referrals.json", ed25519_keys)
+    assert (summary.first_percent, summary.recurring_percent, summary.hold_days) == (40, 20, 14)
+    assert summary.min_withdrawal_usd_cents == 2000
+    assert summary.withdraw_methods == ["wallet"]
+    assert [(c.code, c.kind) for c in summary.promo_codes] == [("OWNER1", "partner_auto")]
+    assert summary.pending_withdrawal is None and summary.recent_accruals == []
+    assert summary.on_hold_usd_cents == 0 and summary.spent_on_subscriptions_usd_cents == 0
+
+
+async def test_partner_code_set(ed25519_keys: tuple[bytes, bytes]) -> None:
+    code = await _customer_result("customer_referrals_code.json", ed25519_keys)
+    assert (code.code, code.kind) == ("Owner_Promo", "partner_custom")
+
+
+async def test_promo_activation_and_pending(ed25519_keys: tuple[bytes, bytes]) -> None:
+    activation = await _customer_result("customer_promo_activate.json", ed25519_keys)
+    assert activation.effect == "discount_percent" and activation.value == 15
+    assert activation.first_subscription_only and activation.status == "pending"
+    assert activation.created_at is not None and activation.created_at.utcoffset() is not None
+    pending = await _customer_result("customer_promo.json", ed25519_keys)
+    assert pending == [activation]
+
+
+async def test_payment_paid_by_balance(ed25519_keys: tuple[bytes, bytes]) -> None:
+    session = await _customer_result("customer_billing_payment_create_balance.json", ed25519_keys)
+    assert session.status == "paid" and session.amount_rub_kopecks == 0
+    assert session.pay_url is None and session.checkout_url is None
+    assert (session.balance_spent_rub_kopecks, session.balance_spent_usd_cents) == (29000, 304)
+    payment = await _customer_result("customer_billing_payment_get_balance.json", ed25519_keys)
+    assert payment.provider == "balance" and payment.payment_method is None
+    assert payment.invoiced_at is None and payment.paid_at is not None
+    items_total = sum(item.price_rub_kopecks * item.quantity for item in payment.items)
+    assert items_total - payment.balance_spent_rub_kopecks == payment.amount_rub_kopecks
+
+
+async def test_payment_partly_paid_by_balance(ed25519_keys: tuple[bytes, bytes]) -> None:
+    name = "customer_billing_payment_create_balance_partial.json"
+    session = await _customer_result(name, ed25519_keys)
+    assert session.status == "invoiced" and session.pay_url
+    assert session.amount_rub_kopecks + session.balance_spent_rub_kopecks == 29000
 
 
 async def test_products_fixture_items() -> None:

@@ -1,4 +1,4 @@
-"""Customer plane namespaces: ``billing``, ``ai`` and ``referrals``.
+"""Customer plane namespaces: ``billing``, ``promo``, ``ai`` and ``referrals``.
 
 Each method asks for exactly the scope its CRM route requires, so a leaked assertion
 opens one action instead of the whole plane.
@@ -20,8 +20,10 @@ from .models.customer import (
     AiUsage,
     CatalogProduct,
     CheckoutSession,
+    PartnerCode,
     Payment,
     PaymentPage,
+    PromoActivation,
     ReferralSummary,
     Subscription,
     WithdrawalPage,
@@ -29,7 +31,7 @@ from .models.customer import (
 )
 from .models.service import AiKeyStats
 
-__all__ = ["AiApi", "BillingApi", "ReferralsApi"]
+__all__ = ["AiApi", "BillingApi", "PromoApi", "ReferralsApi"]
 
 SCOPE_BILLING_READ = "billing:read"
 SCOPE_BILLING_WRITE = "billing:write"
@@ -40,6 +42,14 @@ SCOPE_REFERRALS_WRITE = "referrals:write"
 
 class _ProductList(CrmModel):
     items: list[CatalogProduct]
+
+
+class _PromoActivated(CrmModel):
+    activation: PromoActivation
+
+
+class _PromoPending(CrmModel):
+    pending: list[PromoActivation]
 
 
 class _Requester(Protocol):
@@ -99,12 +109,20 @@ class BillingApi(_Namespace):
         return_to: str,
         payment_method: str | None = None,
         ai_function: str | None = None,
+        promo_code: str | None = None,
+        use_balance: bool = False,
         idempotency_key: str | None = None,
     ) -> CheckoutSession:
         """Create a draft payment (``billing:write``, HTTP 201).
 
         ``payment_method`` is sent only for ``provider="platega"`` and ``ai_function`` only for
         AI token packages: CRM rejects either field where it does not apply.
+
+        ``promo_code`` activates a code in the same request (refusal: ``ValidationError`` with
+        ``code="promo_<reason>"``). ``use_balance`` pays a subscription with the actor's
+        referral balance; when it covers the whole price the answer has ``status="paid"`` and
+        no ``pay_url``. Both are omitted from the body unless set, so an older CRM with a closed
+        body keeps accepting plain payments.
         """
         body: dict[str, Any] = {
             "product_id": product_id,
@@ -116,6 +134,10 @@ class BillingApi(_Namespace):
             body["payment_method"] = payment_method
         if ai_function is not None:
             body["ai_function"] = ai_function
+        if promo_code is not None:
+            body["promo_code"] = promo_code
+        if use_balance:
+            body["use_balance"] = True
         data = await self._request(
             "POST",
             "/billing/payments",
@@ -145,6 +167,30 @@ class BillingApi(_Namespace):
             scopes=[SCOPE_BILLING_READ],
         )
         return _parse(Payment, data, "billing.get_payment")
+
+
+class PromoApi(_Namespace):
+    async def activate(self, code: str, *, idempotency_key: str | None = None) -> PromoActivation:
+        """Activate a promo code before choosing a plan (``billing:write``, HTTP 201).
+
+        Any account role may activate. The benefit waits for a payment: the next
+        ``create_payment`` picks up a pending discount by itself. Refusals are
+        ``ValidationError`` with ``code="promo_<reason>"`` (``promo_not_found``,
+        ``promo_expired``, ...); CRM stores the refusal, a retry with the same key returns it.
+        """
+        data = await self._request(
+            "POST",
+            "/promo/activate",
+            scopes=[SCOPE_BILLING_WRITE],
+            json={"code": code},
+            idempotency_key=idempotency_key,
+        )
+        return _parse(_PromoActivated, data, "promo.activate").activation
+
+    async def pending(self) -> list[PromoActivation]:
+        """Pending activations of the account, oldest first (``billing:read``)."""
+        data = await self._request("GET", "/promo", scopes=[SCOPE_BILLING_READ])
+        return _parse(_PromoPending, data, "promo.pending").pending
 
 
 class AiApi(_Namespace):
@@ -226,3 +272,20 @@ class ReferralsApi(_Namespace):
             idempotency_key=idempotency_key,
         )
         return _parse(WithdrawalRequest, data, "referrals.withdraw")
+
+    async def set_code(self, code: str, *, idempotency_key: str | None = None) -> PartnerCode:
+        """Set the partner's own code, ``kind="partner_custom"`` (``billing:write``).
+
+        The partner is the actor (``act``), not the account. 4-32 characters of
+        ``A-Z a-z 0-9 _ -``, unique case-insensitively; a repeated call renames the custom
+        code. Refusals: ``ValidationError`` ``promo_invalid_code``, ``ApiError`` (409)
+        ``promo_code_taken``.
+        """
+        data = await self._request(
+            "PUT",
+            "/referrals/code",
+            scopes=[SCOPE_BILLING_WRITE],
+            json={"code": code},
+            idempotency_key=idempotency_key,
+        )
+        return _parse(PartnerCode, data, "referrals.set_code")

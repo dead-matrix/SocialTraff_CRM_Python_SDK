@@ -128,6 +128,31 @@ ROUTES: list[tuple[str, Call, str, str, str, Any]] = [
         },
     ),
     (
+        "promo.activate",
+        lambda c: c.promo.activate("SALE15"),
+        "POST",
+        "/promo/activate",
+        "billing:write",
+        {
+            "activation": {
+                "code": "SALE15",
+                "effect": "bonus_days",
+                "value": 7,
+                "first_subscription_only": False,
+                "status": "pending",
+                "created_at": TS,
+            }
+        },
+    ),
+    (
+        "promo.pending",
+        lambda c: c.promo.pending(),
+        "GET",
+        "/promo",
+        "billing:read",
+        {"pending": []},
+    ),
+    (
         "ai.balance",
         lambda c: c.ai.balance(),
         "GET",
@@ -186,6 +211,14 @@ ROUTES: list[tuple[str, Call, str, str, str, Any]] = [
             "method": "wallet",
         },
     ),
+    (
+        "referrals.set_code",
+        lambda c: c.referrals.set_code("My_Code"),
+        "PUT",
+        "/referrals/code",
+        "billing:write",
+        {"code": "My_Code", "kind": "partner_custom"},
+    ),
 ]
 
 
@@ -213,7 +246,7 @@ async def test_route_path_scope_and_idempotency(
     assert claims["scope"] == scope
     assert claims["sub"] == ACCOUNT and claims["act"] == 42
     assert claims["token_use"] == "customer_assertion"
-    assert ("Idempotency-Key" in request.headers) == (method == "POST")
+    assert ("Idempotency-Key" in request.headers) == (method in {"POST", "PUT"})
 
 
 async def test_referrals_get_parses_summary(ed25519_keys: tuple[bytes, bytes]) -> None:
@@ -236,6 +269,42 @@ async def test_referrals_get_parses_summary(ed25519_keys: tuple[bytes, bytes]) -
     assert recorder.requests[0].url.path == f"{PREFIX}/referrals"
     assert result.available_usd_cents == 250
     assert result.withdraw_methods == ["subscription", "wallet"]
+    # A CRM older than partner promo codes: new fields are unknown, not zero.
+    assert result.first_percent is None and result.pending_withdrawal is None
+    assert result.promo_codes == [] and result.recent_accruals == []
+
+
+async def test_referrals_summary_without_subscription_withdrawals(
+    ed25519_keys: tuple[bytes, bytes],
+) -> None:
+    summary = {
+        "ref_link": "https://socialtraff.com/?ref=r1",
+        "percent": 20,
+        "registrations": 1,
+        "referred_payments_count": 1,
+        "referred_turnover_rub_kopecks": 29000,
+        "earned_usd_cents": 600,
+        "available_usd_cents": 0,
+        "withdrawn_wallet_usd_cents": 0,
+        "min_withdrawal_usd_cents": 2000,
+        "withdraw_methods": ["wallet"],
+        "on_hold_usd_cents": 600,
+        "pending_withdrawal": {
+            "withdrawal_id": "wdr_1",
+            "amount_usd_cents": 2500,
+            "method": "wallet",
+            "created_at": TS,
+        },
+        "recent_accruals": [
+            {"amount_usd_cents": 600, "kind": "first", "available_at": TS, "reverted": False}
+        ],
+    }
+    async with client_for(ed25519_keys[0], Recorder(ok(summary))) as client:
+        result = await client.referrals.get()
+    assert result.withdrawn_subscription_usd_cents == 0
+    assert result.pending_withdrawal is not None
+    assert result.pending_withdrawal.withdrawal_id == "wdr_1"
+    assert result.recent_accruals[0].amount_usd_cents == 600
 
 
 async def test_create_payment_body_and_explicit_key(ed25519_keys: tuple[bytes, bytes]) -> None:
@@ -271,6 +340,35 @@ async def test_create_payment_body_and_explicit_key(ed25519_keys: tuple[bytes, b
     assert result.ai_tokens == 100000 and result.checkout_url == "https://pay/p1/"
 
 
+async def test_create_payment_promo_and_balance_body(ed25519_keys: tuple[bytes, bytes]) -> None:
+    data = {
+        "payment_public_id": "p2",
+        "checkout_url": None,
+        "pay_url": None,
+        "status": "paid",
+        "amount_rub_kopecks": 0,
+        "promo_discount_rub_kopecks": 4350,
+        "balance_spent_rub_kopecks": 24650,
+        "balance_spent_usd_cents": 258,
+        "return_to": "https://w/back",
+    }
+    recorder = Recorder(ok(data, 201))
+    async with client_for(ed25519_keys[0], recorder) as client:
+        result = await client.billing.create_payment(
+            3,
+            quantity=1,
+            provider="platega",
+            payment_method="sbp",
+            return_to="https://w/back",
+            promo_code="SALE15",
+            use_balance=True,
+        )
+    body = json.loads(recorder.requests[0].content)
+    assert body["promo_code"] == "SALE15" and body["use_balance"] is True
+    assert result.status == "paid" and result.pay_url is None
+    assert result.promo_discount_rub_kopecks == 4350
+
+
 async def test_create_payment_parses_crm_201_shape(ed25519_keys: tuple[bytes, bytes]) -> None:
     # Exact body of CRM customer_billing.create_payment: invoice issued, storefront unset.
     data = {
@@ -291,6 +389,8 @@ async def test_create_payment_parses_crm_201_shape(ed25519_keys: tuple[bytes, by
     assert result.checkout_url is None
     assert result.payment_public_id == data["payment_public_id"]
     assert result.ai_tokens is None
+    # CRM before promo codes: no discount or balance fields, they read as 0.
+    assert result.promo_discount_rub_kopecks == 0 and result.balance_spent_usd_cents == 0
 
 
 async def test_list_payments_query_and_models(ed25519_keys: tuple[bytes, bytes]) -> None:

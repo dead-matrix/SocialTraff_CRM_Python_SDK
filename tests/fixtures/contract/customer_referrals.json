@@ -3,15 +3,29 @@
   "data": {
     "available_usd_cents": 0,
     "earned_usd_cents": 0,
-    "min_withdrawal_usd_cents": 1000,
+    "first_percent": 40,
+    "hold_days": 14,
+    "min_withdrawal_usd_cents": 2000,
+    "on_hold_usd_cents": 0,
+    "paid_referrals_count": 0,
+    "pending_withdrawal": null,
     "percent": 20,
+    "promo_activations_count": 0,
+    "promo_codes": [
+      {
+        "code": "OWNER1",
+        "kind": "partner_auto"
+      }
+    ],
+    "recent_accruals": [],
+    "recurring_percent": 20,
     "ref_bot_link": "https://t.me/socialtraff_robot?start=ref_OWNER1",
     "ref_link": "https://socialtraff.com/?ref=OWNER1",
     "referred_payments_count": 0,
     "referred_turnover_rub_kopecks": 0,
     "registrations": 1,
+    "spent_on_subscriptions_usd_cents": 0,
     "withdraw_methods": [
-      "subscription",
       "wallet"
     ],
     "withdrawn_subscription_usd_cents": 0,
