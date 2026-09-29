@@ -64,6 +64,15 @@ STATS = {
     "disabled": False,
 }
 
+CHATS_RESULT = {
+    "account_id": 11,
+    "active": 2,
+    "linked": 1,
+    "reopened": 1,
+    "unlinked": 0,
+    "unchanged": 0,
+}
+
 PRODUCT = {
     "product_id": 1,
     "title": "Cabinet Pro",
@@ -191,6 +200,29 @@ ROUTES: list[tuple[str, Call, str, str, Any, Any]] = [
             "members": [{"account_id": 11, "buyer_id": 7, "role": "owner"}],
         },
         {"buyers": 1, "accounts": 1, "members": 1},
+    ),
+    (
+        "identity.put_account_chats",
+        lambda c: c.identity.put_account_chats(
+            11,
+            [
+                {"tg_chat_id": -100500, "type": "supergroup"},
+                {
+                    "tg_chat_id": 100,
+                    "type": "private",
+                    "linked_at": datetime(2026, 9, 20, 12, tzinfo=MSK),
+                },
+            ],
+        ),
+        "PUT",
+        "/identity/accounts/11/chats",
+        {
+            "chats": [
+                {"tg_chat_id": -100500, "type": "supergroup"},
+                {"tg_chat_id": 100, "type": "private", "linked_at": TS},
+            ]
+        },
+        CHATS_RESULT,
     ),
     (
         "plans.import",
@@ -333,6 +365,37 @@ async def test_remove_absent_member_parses_nulls() -> None:
     assert member.role is None and member.joined_at is None and member.created is None
 
 
+async def test_put_account_chats_empty_list_unlinks_all() -> None:
+    data = {**CHATS_RESULT, "active": 0, "linked": 0, "reopened": 0, "unlinked": 2}
+    recorder = Recorder(ok(data))
+    async with client_for(recorder) as client:
+        result = await client.identity.put_account_chats(11, [])
+    assert body_of(recorder.requests[0]) == {"chats": []}
+    assert result.active == 0 and result.unlinked == 2
+
+
+async def test_identity_import_sends_chats_only_when_given() -> None:
+    chat = {
+        "account_id": 11,
+        "tg_chat_id": -100500,
+        "type": "supergroup",
+        "linked_at": datetime(2026, 9, 20, 12, tzinfo=MSK),
+    }
+    recorder = Recorder(
+        ok({"buyers": 0, "accounts": 0, "members": 0}),
+        ok({"buyers": 0, "accounts": 0, "members": 0}),
+        ok({"buyers": 0, "accounts": 0, "members": 0, "chats": 1}),
+    )
+    async with client_for(recorder) as client:
+        old_crm = await client.identity.import_()
+        await client.identity.import_(chats=[])
+        result = await client.identity.import_(chats=[chat])
+    assert "chats" not in body_of(recorder.requests[0])
+    assert "chats" not in body_of(recorder.requests[1])
+    assert body_of(recorder.requests[2])["chats"] == [{**chat, "linked_at": TS}]
+    assert old_crm.chats is None and result.chats == 1
+
+
 async def test_import_with_key_is_sent_and_retried(sleeps: list[float]) -> None:
     recorder = Recorder(fail(503, "unavailable"), ok({"imported": 0, "unchanged": 1}))
     async with client_for(recorder) as client:
@@ -362,8 +425,28 @@ async def test_import_with_key_is_sent_and_retried(sleeps: list[float]) -> None:
             accounts=[{"account_id": 1, "created_at": datetime(2026, 9, 1)}]
         ),
         lambda c: c.plans.list_updated(datetime(2026, 9, 1)),
+        lambda c: c.identity.put_account_chats(
+            1, [{"tg_chat_id": 5, "type": "private", "linked_at": datetime(2026, 9, 1)}]
+        ),
+        lambda c: c.identity.import_(
+            chats=[
+                {
+                    "account_id": 1,
+                    "tg_chat_id": 5,
+                    "type": "private",
+                    "linked_at": datetime(2026, 9, 1),
+                }
+            ]
+        ),
     ],
-    ids=["put_account", "plans.import", "identity.import", "plans.list_updated"],
+    ids=[
+        "put_account",
+        "plans.import",
+        "identity.import",
+        "plans.list_updated",
+        "put_account_chats",
+        "identity.import.chats",
+    ],
 )
 async def test_naive_datetime_is_rejected_before_request(call: Call) -> None:
     recorder = Recorder()

@@ -3,6 +3,7 @@
   "data": {
     "accounts": 1,
     "buyers": 1,
+    "chats": 1,
     "members": 1
   },
   "message": null,

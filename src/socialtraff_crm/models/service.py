@@ -12,6 +12,7 @@ from .common import AwareDatetime, CrmModel
 
 __all__ = [
     "Account",
+    "AccountChatsResult",
     "AccountPlans",
     "AiKey",
     "AiKeyStats",
@@ -71,6 +72,17 @@ class IdentityImportResult(CrmModel):
     buyers: int
     accounts: int
     members: int
+    # None from a CRM without account chats: it does not send the key.
+    chats: int | None = None
+
+
+class AccountChatsResult(CrmModel):
+    account_id: int
+    active: int
+    linked: int
+    reopened: int
+    unlinked: int
+    unchanged: int
 
 
 class PlanSlot(CrmModel):

@@ -33,6 +33,7 @@ from socialtraff_crm.models import (
     KNOWN_NOTIFY_KINDS,
     AccessExpiredFollowupParams,
     Account,
+    AccountChatsResult,
     AccountPlans,
     AiKey,
     AiKeyStats,
@@ -104,6 +105,16 @@ SERVICE_CALLS: dict[str, tuple[ServiceCall, type]] = {
             members=[{"account_id": 2001, "buyer_id": 8001, "role": "owner"}],
         ),
         IdentityImportResult,
+    ),
+    "service_identity_put_chats.json": (
+        lambda crm: crm.identity.put_account_chats(
+            2003,
+            [
+                {"tg_chat_id": -1001234567890, "type": "supergroup"},
+                {"tg_chat_id": 5558001, "type": "private"},
+            ],
+        ),
+        AccountChatsResult,
     ),
     "service_identity_put_account.json": (
         lambda crm: crm.identity.put_account(
@@ -488,6 +499,26 @@ async def test_service_catalog_equals_customer_products() -> None:
 
 def test_webhook_fixture_url_is_the_bosslink_route() -> None:
     assert _load("webhook_product_request.json")["url"].endswith("/api/v1/crm/webhook")
+
+
+async def test_identity_import_fixture_counts_chats() -> None:
+    call, _ = SERVICE_CALLS["service_identity_import.json"]
+    async with ServiceClient(
+        BASE_URL, "svc", transport=_mock(_load("service_identity_import.json"))
+    ) as crm:
+        result = await call(crm)
+    assert (result.buyers, result.accounts, result.members, result.chats) == (1, 1, 1, 1)
+
+
+async def test_put_chats_fixture_counters() -> None:
+    call, _ = SERVICE_CALLS["service_identity_put_chats.json"]
+    async with ServiceClient(
+        BASE_URL, "svc", transport=_mock(_load("service_identity_put_chats.json"))
+    ) as crm:
+        result = await call(crm)
+    assert result.account_id == 2003
+    assert (result.active, result.linked, result.reopened) == (2, 2, 0)
+    assert (result.unlinked, result.unchanged) == (1, 0)
 
 
 async def test_plans_get_fixture_free_privetka() -> None:

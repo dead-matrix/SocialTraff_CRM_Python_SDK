@@ -1,5 +1,18 @@
 # Изменения
 
+## Unreleased
+
+Синхронизация с контрактом CRM на коммите `2276640`.
+
+- `identity.put_account_chats(account_id, chats)` -> `AccountChatsResult`
+  (`PUT /api/internal/identity/accounts/{account_id}/chats`): полный набор Telegram-чатов
+  аккаунта, пустой список отвязывает все. Ответ: `account_id`, `active`, `linked`, `reopened`,
+  `unlinked`, `unchanged`.
+- `identity.import_(..., chats=None)`: перенос чатов аккаунтов. Ключ `chats` уходит в тело только
+  непустым, поэтому импорт без чатов работает и со старой CRM (она отвечает 422 на этот ключ).
+- `IdentityImportResult.chats` (`None` от старой CRM).
+- Фикстуры: новая `service_identity_put_chats.json`, обновлена `service_identity_import.json`.
+
 ## 0.2.0 (2026-09-29)
 
 Синхронизация с контрактом CRM на коммите `79def25`.

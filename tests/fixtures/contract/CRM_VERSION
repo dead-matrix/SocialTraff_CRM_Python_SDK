@@ -1,2 +1,2 @@
-commit=79def25cf1557e602fc05b8fabce41781a80076f
+commit=227664017cb1bd174bc18b7a844d2d72eeca0b4f
 source=CRM tests/contract/*.json

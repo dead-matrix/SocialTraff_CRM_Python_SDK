@@ -21,7 +21,8 @@
 | `identity.put_member(account_id, buyer_id, role)` | PUT | `/api/internal/identity/accounts/{account_id}/members/{buyer_id}` | нет | `Member` |
 | `identity.remove_member(account_id, buyer_id)` | DELETE | `/api/internal/identity/accounts/{account_id}/members/{buyer_id}` | нет | `Member` |
 | `identity.issue_customer_id(account_id)` | POST | `/api/internal/identity/accounts/{account_id}/customer-id` | нет | `CustomerId` |
-| `identity.import_(buyers, accounts, members)` | POST | `/api/internal/identity/import` | не проверяется CRM, см. ниже | `IdentityImportResult` |
+| `identity.put_account_chats(account_id, chats)` | PUT | `/api/internal/identity/accounts/{account_id}/chats` | нет | `AccountChatsResult` |
+| `identity.import_(buyers, accounts, members, chats)` | POST | `/api/internal/identity/import` | не проверяется CRM, см. ниже | `IdentityImportResult` |
 | `plans.import_(items)` | POST | `/api/internal/plans/import` | не проверяется CRM, см. ниже | `PlansImportResult` |
 | `plans.get(account_id)` | GET | `/api/internal/plans/{account_id}` | нет | `AccountPlans` |
 | `plans.list_updated(updated_since, limit, cursor)` | GET | `/api/internal/plans` | нет | `PlansPage` |
@@ -35,6 +36,14 @@
 429/502-504. Пакет: до 1000 элементов в каждом списке; повтор пары (аккаунт, категория) в одном
 пакете, `plan="free"`, неизвестный тариф или аккаунт отвергают весь пакет (422 или 404).
 `expires_at` обязателен и должен быть с часовым поясом.
+
+`put_account_chats` задаёт полный набор чатов аккаунта: элементы `{tg_chat_id, type, linked_at?}`
+(`tg_chat_id` не 0, `type` 1..16 символов, `linked_at` с часовым поясом), до 1000, повтор
+`tg_chat_id` даёт 422. Чаты, которых нет в списке, отвязываются; пустой список отвязывает все.
+Ответ `AccountChatsResult`: `account_id`, `active`, `linked`, `reopened`, `unlinked`,
+`unchanged`. В `identity.import_` список `chats` (`{account_id, tg_chat_id, type, linked_at,
+unlinked_at?}`) уходит в тело только непустым: CRM без чатов аккаунта отвечает 422 на этот ключ.
+`IdentityImportResult.chats` у такой CRM `None`.
 
 Ответы: 401 без `X-Service-Token`, 403 с чужим токеном (`AuthError`), 404 неизвестный аккаунт
 (`NotFoundError`), 409 `tg_id` уже у другого покупателя (`ApiError`), 422 (`ValidationError`).

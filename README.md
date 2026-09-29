@@ -42,6 +42,7 @@ async with ServiceClient(
     buyer = await crm.identity.put_buyer(42, tg_id=100500, display_name="Ann")
     await crm.identity.put_account(1042, title="Ann", owner_buyer_id=42, is_personal=True)
     await crm.identity.put_member(1042, 42, "owner")
+    await crm.identity.put_account_chats(1042, [{"tg_chat_id": -100500, "type": "supergroup"}])
     customer_id = await crm.identity.issue_customer_id(1042)
 
     products = await crm.catalog.get()  # витрина без аккаунта (анонимная страница цен)

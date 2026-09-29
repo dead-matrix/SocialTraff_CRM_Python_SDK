@@ -43,6 +43,7 @@ from .events import (
 )
 from .service import (
     Account,
+    AccountChatsResult,
     AccountPlans,
     AiKey,
     AiKeyStats,
@@ -59,6 +60,7 @@ __all__ = [
     "KNOWN_NOTIFY_KINDS",
     "AccessExpiredFollowupParams",
     "Account",
+    "AccountChatsResult",
     "AccountPlans",
     "AiBalance",
     "AiFunctionBalance",

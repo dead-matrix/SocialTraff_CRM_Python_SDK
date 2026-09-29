@@ -18,6 +18,7 @@ from .errors import ValidationError
 from .models.customer import CatalogProduct
 from .models.service import (
     Account,
+    AccountChatsResult,
     AccountPlans,
     AiKey,
     AiKeyStats,
@@ -138,6 +139,19 @@ class IdentityApi(_Namespace):
         )
         return _parse(Member, data, "identity.remove_member")
 
+    async def put_account_chats(
+        self, account_id: int, chats: Iterable[Mapping[str, Any]]
+    ) -> AccountChatsResult:
+        """Replace the set of Telegram chats linked to an account.
+
+        Items are ``{tg_chat_id, type, linked_at?}``; ``linked_at`` must be timezone-aware.
+        The list is the full desired state: chats missing from it are unlinked, so an empty
+        list unlinks all of them.
+        """
+        body = {"chats": [_jsonable(item, "chats") for item in chats]}
+        data = await self._request("PUT", f"/identity/accounts/{_id(account_id)}/chats", json=body)
+        return _parse(AccountChatsResult, data, "identity.put_account_chats")
+
     async def issue_customer_id(self, account_id: int) -> CustomerId:
         """Public customer id of the account, issued on the first call and stable after."""
         data = await self._request("POST", f"/identity/accounts/{_id(account_id)}/customer-id")
@@ -148,19 +162,27 @@ class IdentityApi(_Namespace):
         buyers: Iterable[Mapping[str, Any]] = (),
         accounts: Iterable[Mapping[str, Any]] = (),
         members: Iterable[Mapping[str, Any]] = (),
+        chats: Iterable[Mapping[str, Any]] | None = None,
         *,
         idempotency_key: str | None = None,
     ) -> IdentityImportResult:
         """Bulk upsert in one CRM transaction.
 
         Items use the fields of ``put_buyer``/``put_account``/``put_member`` plus their ids
-        (``buyer_id``, ``account_id``); datetimes must be timezone-aware.
+        (``buyer_id``, ``account_id``); datetimes must be timezone-aware. ``chats`` items are
+        ``{account_id, tg_chat_id, type, linked_at, unlinked_at?}``.
+
+        ``chats`` goes into the body only when it is passed and non-empty: a CRM without
+        account chats answers 422 to the key, and an empty import list carries nothing anyway.
         """
         body = {
             "buyers": [_jsonable(item, "buyers") for item in buyers],
             "accounts": [_jsonable(item, "accounts") for item in accounts],
             "members": [_jsonable(item, "members") for item in members],
         }
+        chat_items = [_jsonable(item, "chats") for item in chats or ()]
+        if chat_items:
+            body["chats"] = chat_items
         data = await self._request(
             "POST", "/identity/import", json=body, idempotency_key=idempotency_key
         )
