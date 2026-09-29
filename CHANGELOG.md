@@ -1,8 +1,8 @@
 # Изменения
 
-## Unreleased
+## 0.2.1 (2026-09-29)
 
-Синхронизация с контрактом CRM на коммите `2276640`.
+Синхронизация с контрактом CRM на коммите `8e706ce`.
 
 - `identity.put_account_chats(account_id, chats)` -> `AccountChatsResult`
   (`PUT /api/internal/identity/accounts/{account_id}/chats`): полный набор Telegram-чатов

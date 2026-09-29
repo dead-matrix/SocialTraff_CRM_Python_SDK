@@ -1,6 +1,6 @@
 # Контракт SDK ↔ CRM
 
-Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.2.0.
+Таблица соответствия методов SDK и ручек CRM (план CRM, §5.2, §5.3, §7.2), версия SDK 0.2.1.
 Контрактные фикстуры (`tests/fixtures/contract/*.json`, 38 файлов) - байтовая копия CRM
 `tests/contract/*.json` на коммите `79def25` (полный SHA в `tests/fixtures/contract/CRM_VERSION`).
 Каждую фикстуру разбирает `tests/test_contract_fixtures.py`; пересинхронизация и проверка для CI:

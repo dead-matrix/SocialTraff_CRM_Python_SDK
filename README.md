@@ -9,7 +9,7 @@
 - `AssertionSigner`: выпуск assertion (JWT EdDSA/Ed25519) на каждый запрос клиентской плоскости;
 - `webhooks.verify`: проверка подписи вебхуков CRM → продукт и разбор событий `product.*`.
 
-> Статус: `0.2.0`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
+> Статус: `0.2.1`. Сервисная и клиентская плоскости, assertion и проверка вебхуков готовы;
 > формы ответов и событий сверены с контрактными фикстурами CRM (`tests/fixtures/contract/`,
 > коммит CRM в `tests/fixtures/contract/CRM_VERSION`). Изменения по версиям: [CHANGELOG.md](CHANGELOG.md).
 
@@ -24,12 +24,12 @@
 dependencies = ["socialtraff-crm-sdk"]
 
 [tool.uv.sources]
-socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.2.0" }
+socialtraff-crm-sdk = { git = "https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK", tag = "v0.2.1" }
 ```
 
 Для доступа по SSH (deploy key) источник записывается как
-`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.2.0" }`.
-Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.2.0"`.
+`{ git = "ssh://git@github.com/dead-matrix/SocialTraff_CRM_Python_SDK.git", tag = "v0.2.1" }`.
+Затем `uv sync`. Разовая установка: `uv add "socialtraff-crm-sdk @ git+https://github.com/dead-matrix/SocialTraff_CRM_Python_SDK@v0.2.1"`.
 
 ## ServiceClient
 
@@ -228,7 +228,7 @@ CRM_CHECKOUT=../CRM uv run pytest tests/test_contract_fixtures.py  # то же �
 что стоит в зависимостях, и держат рядом файл с тегом; обновляют вместе с тегом SDK:
 
 ```sh
-git -C <SDK> archive v0.2.0 tests/fixtures/contract | tar -x --strip-components=3 -C tests/fixtures/crm
+git -C <SDK> archive v0.2.1 tests/fixtures/contract | tar -x --strip-components=3 -C tests/fixtures/crm
 ```
 
 Порядок при изменении контракта CRM: CRM коммитит фикстуры, SDK синхронизирует их, правит
