@@ -49,9 +49,11 @@ from socialtraff_crm.models import (
     PaymentConfirmedParams,
     PaymentExpiredParams,
     PaymentReminderParams,
+    PendingWithdrawal,
     PlansImportResult,
     PlansPage,
     PromoActivation,
+    ReferralAccrual,
     ReferralSummary,
     Subscription,
     SubscriptionChangedPayload,
@@ -193,6 +195,7 @@ CUSTOMER_CALLS: dict[str, tuple[CustomerCall, type]] = {
     "customer_promo.json": (lambda c: c.promo.pending(), list),
     "customer_promo_activate.json": (lambda c: c.promo.activate("SALE15"), PromoActivation),
     "customer_referrals.json": (lambda c: c.referrals.get(), ReferralSummary),
+    "customer_referrals_active.json": (lambda c: c.referrals.get(), ReferralSummary),
     "customer_referrals_code.json": (lambda c: c.referrals.set_code("Owner_Promo"), PartnerCode),
 }
 
@@ -446,6 +449,24 @@ async def test_referral_summary_partner_fields(ed25519_keys: tuple[bytes, bytes]
     assert [(c.code, c.kind) for c in summary.promo_codes] == [("OWNER1", "partner_auto")]
     assert summary.pending_withdrawal is None and summary.recent_accruals == []
     assert summary.on_hold_usd_cents == 0 and summary.spent_on_subscriptions_usd_cents == 0
+
+
+async def test_referral_summary_with_accruals(ed25519_keys: tuple[bytes, bytes]) -> None:
+    summary = await _customer_result("customer_referrals_active.json", ed25519_keys)
+    pending = summary.pending_withdrawal
+    assert isinstance(pending, PendingWithdrawal)
+    assert pending.withdrawal_id.startswith("wdr_")
+    assert (pending.amount_usd_cents, pending.method) == (2500, "wallet")
+    assert pending.created_at is not None and pending.created_at.utcoffset() is not None
+    accruals = summary.recent_accruals
+    assert accruals and all(isinstance(a, ReferralAccrual) for a in accruals)
+    for accrual in accruals:
+        assert accrual.available_at is not None and accrual.available_at.utcoffset() is not None
+    assert [(a.kind, a.amount_usd_cents, a.reverted) for a in accruals] == [
+        ("recurring", 600, True),
+        ("recurring", 600, False),
+        ("first", 1200, False),
+    ]
 
 
 async def test_partner_code_set(ed25519_keys: tuple[bytes, bytes]) -> None:

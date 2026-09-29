@@ -12,6 +12,7 @@
   непустым, поэтому импорт без чатов работает и со старой CRM (она отвечает 422 на этот ключ).
 - `IdentityImportResult.chats` (`None` от старой CRM).
 - Фикстуры: новая `service_identity_put_chats.json`, обновлена `service_identity_import.json`.
+- Фикстуры: новая `customer_referrals_active.json` (CRM `8e706ce`): сводка партнёра с непустыми `recent_accruals` и `pending_withdrawal`.
 
 ## 0.2.0 (2026-09-29)
 
